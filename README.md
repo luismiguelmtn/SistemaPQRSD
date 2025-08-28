@@ -106,8 +106,8 @@ curl -X POST "http://127.0.0.1:8000/casos/" \
 **Respuesta esperada:**
 ```json
 {
-  "id": "123e4567-e89b-12d3-a456-426614174000",
-  "numero_caso": "CASO-001",
+  "id": 1,
+  "numero_caso": "PET-0001",
   "tipo": "peticion",
   "estado": "recibido",
   "asunto": "Solicitud de información",
@@ -116,6 +116,7 @@ curl -X POST "http://127.0.0.1:8000/casos/" \
   "email_solicitante": "juan@email.com",
   "telefono_solicitante": "123456789",
   "fecha_creacion": "2024-01-15T10:30:00",
+  "fecha_actualizacion": "2024-01-15T10:30:00",
   "respuesta": null
 }
 ```
@@ -164,11 +165,25 @@ curl "http://127.0.0.1:8000/estadisticas/"
 
 ## Tipos de Casos
 
-- **PETICION**: Solicitudes de información o servicios
-- **QUEJA**: Manifestaciones de insatisfacción
-- **RECLAMO**: Solicitudes de corrección o compensación
-- **SUGERENCIA**: Propuestas de mejora
-- **DENUNCIA**: Reportes de irregularidades
+- **PETICION**: Solicitudes de información o servicios (Prefijo: PET)
+- **QUEJA**: Manifestaciones de insatisfacción (Prefijo: QUE)
+- **RECLAMO**: Solicitudes de corrección o compensación (Prefijo: REC)
+- **SUGERENCIA**: Propuestas de mejora (Prefijo: SUG)
+- **DENUNCIA**: Reportes de irregularidades (Prefijo: DEN)
+
+### Formato de Números de Caso
+
+Cada caso recibe un número único legible con el formato: `PREFIJO-NNNN`
+
+Ejemplos:
+- `PET-0001`: Primera petición
+- `QUE-0001`: Primera queja
+- `REC-0002`: Segunda reclamación
+
+### Sistema de IDs
+
+- **ID interno**: Entero secuencial (1, 2, 3, ...) para uso del sistema
+- **Número de caso**: Formato legible para usuarios y seguimiento
 
 ## Estados de Casos
 

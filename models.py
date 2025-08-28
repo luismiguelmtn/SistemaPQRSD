@@ -81,9 +81,9 @@ class CasoCreate(BaseModel):
     # Teléfono opcional para contacto
     telefono_solicitante: Optional[str] = Field(
         None,
-        min_length=7,
+        min_length=10,
         max_length=15,
-        description="Teléfono de contacto (opcional, 7-15 caracteres)",
+        description="Teléfono de contacto (opcional, 10-15 caracteres)",
         example="3001234567"
     )
 
