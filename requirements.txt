@@ -1,0 +1,7 @@
+# requirements.txt - Dependencias del Sistema PQRSD
+
+fastapi>=0.68.0
+uvicorn>=0.15.0
+pydantic>=1.8.0
+email-validator>=1.1.0
+python-multipart>=0.0.5
