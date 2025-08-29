@@ -25,19 +25,22 @@ from typing import List, Optional, Dict, Any
 from datetime import datetime
 import uuid
 from fastapi import HTTPException
+from sqlalchemy.orm import Session
+from sqlalchemy import and_, or_
 
 from enums import TipoCaso, EstadoCaso
 from models import CasoCreate, CasoUpdate
+from database import get_database_session
+from db_models import Caso
 
 
 # ============================================================================
-# BASE DE DATOS EN MEMORIA
+# BASE DE DATOS REAL CON SQLALCHEMY
 # ============================================================================
 
-# IMPORTANTE: Esta es una "base de datos" temporal en memoria
-# En un sistema real, esto sería una base de datos como PostgreSQL, MySQL, etc.
-# Los datos se pierden cuando se reinicia el servidor
-casos_db: List[Dict[str, Any]] = []  # Lista que almacena todos los casos
+# IMPORTANTE: Ahora usamos una base de datos real (SQLite)
+# Los datos se guardan permanentemente en el archivo pqrsd_sistema.db
+# Ya no necesitamos la lista en memoria casos_db
 
 
 # ============================================================================
@@ -85,8 +88,9 @@ def generar_numero_caso(tipo: TipoCaso) -> str:
         TipoCaso.DENUNCIA: "DEN"
     }
     
-    # Contar cuántos casos del mismo tipo ya existen
-    contador = len([c for c in casos_db if c["tipo"] == tipo]) + 1
+    # Obtener una sesión de base de datos para contar casos del mismo tipo
+    with next(get_database_session()) as db:
+        contador = db.query(Caso).filter(Caso.tipo == tipo).count() + 1
     
     # Generar número con formato: PREFIJO-NNNN
     return f"{prefijos[tipo]}-{contador:04d}"
@@ -98,21 +102,23 @@ def generar_numero_caso(tipo: TipoCaso) -> str:
 
 def crear_nuevo_caso(caso_data: CasoCreate) -> Dict[str, Any]:
     """
-    Crea un nuevo caso PQRSD en el sistema.
+    Crea un nuevo caso PQRSD en la base de datos.
     
     Esta función:
-    1. Genera un ID único (entero secuencial) para el caso
-    2. Genera un número de caso legible basado en el tipo
-    3. Asigna el estado inicial "RECIBIDO"
-    4. Establece las fechas de creación y actualización
-    5. Almacena el caso en la "base de datos"
-    6. Retorna el caso creado completo
+    1. Genera un número de caso legible basado en el tipo
+    2. Crea un nuevo registro en la base de datos
+    3. Asigna automáticamente el estado inicial "recibido"
+    4. Las fechas se establecen automáticamente por la base de datos
+    5. Retorna el caso creado convertido a diccionario
     
     Args:
         caso_data (CasoCreate): Datos del caso proporcionados por el usuario
         
     Returns:
-        Dict[str, Any]: El caso creado con todos los campos completos
+        Dict[str, Any]: El caso creado con todos los campos completados
+        
+    Raises:
+        HTTPException: Si hay un error al guardar en la base de datos
         
     Ejemplo:
         >>> caso_nuevo = CasoCreate(
@@ -125,81 +131,103 @@ def crear_nuevo_caso(caso_data: CasoCreate) -> Dict[str, Any]:
         >>> caso_creado = crear_nuevo_caso(caso_nuevo)
         >>> print(caso_creado["numero_caso"])  # "PET-0001"
     """
-    # Generar ID secuencial (el siguiente número disponible)
-    nuevo_id = len(casos_db) + 1
     
-    # Crear diccionario con todos los datos del caso
-    nuevo_caso = {
-        "id": nuevo_id,                             # ID único interno (entero secuencial)
-        "numero_caso": generar_numero_caso(caso_data.tipo),  # Número legible para usuarios
-        "tipo": caso_data.tipo,                     # Tipo de caso (enum)
-        "asunto": caso_data.asunto,                 # Título del caso
-        "descripcion": caso_data.descripcion,       # Descripción detallada
-        "nombre_solicitante": caso_data.nombre_solicitante,
-        "email_solicitante": caso_data.email_solicitante,
-        "telefono_solicitante": caso_data.telefono_solicitante,
-        "estado": EstadoCaso.RECIBIDO,              # Estado inicial siempre "RECIBIDO"
-        "fecha_creacion": datetime.now(),          # Cuándo se creó
-        "fecha_actualizacion": datetime.now(),     # Última modificación (igual a creación)
-        "respuesta": None                           # Sin respuesta inicial
-    }
-    
-    # Guardar en la "base de datos" (lista en memoria)
-    casos_db.append(nuevo_caso)
-    
-    return nuevo_caso
+    try:
+        # Obtener una sesión de base de datos
+        with next(get_database_session()) as db:
+            # Generar número de caso público
+            numero_caso = generar_numero_caso(caso_data.tipo)
+            
+            # Crear el objeto Caso usando el método from_pydantic
+            nuevo_caso_db = Caso.from_pydantic(caso_data, numero_caso)
+            
+            # Agregar a la sesión y guardar en la base de datos
+            db.add(nuevo_caso_db)
+            db.commit()  # Confirmar los cambios
+            db.refresh(nuevo_caso_db)  # Actualizar el objeto con datos de la DB (como el ID)
+            
+            # Convertir a diccionario para retornar
+            return nuevo_caso_db.to_dict()
+            
+    except Exception as e:
+        # Si hay cualquier error, lanzar una excepción HTTP
+        raise HTTPException(
+            status_code=500,
+            detail=f"Error al crear el caso: {str(e)}"
+        )
 
 
 def obtener_casos_filtrados(tipo: Optional[TipoCaso] = None, estado: Optional[EstadoCaso] = None) -> List[Dict[str, Any]]:
     """
-    Obtiene una lista de casos con filtros opcionales.
+    Obtiene una lista de casos aplicando filtros opcionales desde la base de datos.
     
-    Esta función permite:
-    - Obtener todos los casos (sin filtros)
-    - Filtrar por tipo de caso (peticiones, quejas, etc.)
-    - Filtrar por estado (recibido, en proceso, etc.)
-    - Combinar ambos filtros
+    Esta función permite filtrar los casos por:
+    - Tipo de caso (petición, queja, reclamo, etc.)
+    - Estado del caso (recibido, en proceso, resuelto, etc.)
+    - Ambos filtros a la vez
+    - Sin filtros (todos los casos)
     
     Args:
-        tipo (Optional[TipoCaso]): Filtrar por tipo de caso (opcional)
-        estado (Optional[EstadoCaso]): Filtrar por estado (opcional)
+        tipo (Optional[TipoCaso]): Filtrar por tipo de caso. None = no filtrar
+        estado (Optional[EstadoCaso]): Filtrar por estado. None = no filtrar
         
     Returns:
         List[Dict[str, Any]]: Lista de casos que cumplen los filtros
         
-    Ejemplos:
+    Raises:
+        HTTPException: Si hay un error al consultar la base de datos
+        
+    Examples:
         >>> # Obtener todos los casos
         >>> todos = obtener_casos_filtrados()
         
-        >>> # Obtener solo peticiones
+        >>> # Solo peticiones
         >>> peticiones = obtener_casos_filtrados(tipo=TipoCaso.PETICION)
         
-        >>> # Obtener casos en proceso
-        >>> en_proceso = obtener_casos_filtrados(estado=EstadoCaso.EN_PROCESO)
+        >>> # Solo casos resueltos
+        >>> resueltos = obtener_casos_filtrados(estado=EstadoCaso.RESUELTO)
         
-        >>> # Obtener quejas resueltas
-        >>> quejas_resueltas = obtener_casos_filtrados(
+        >>> # Quejas en proceso
+        >>> quejas_proceso = obtener_casos_filtrados(
         ...     tipo=TipoCaso.QUEJA, 
-        ...     estado=EstadoCaso.RESUELTO
+        ...     estado=EstadoCaso.EN_PROCESO
         ... )
     """
-    # Empezar con todos los casos
-    casos_filtrados = casos_db.copy()
     
-    # Aplicar filtro por tipo si se proporciona
-    if tipo:
-        casos_filtrados = [c for c in casos_filtrados if c["tipo"] == tipo]
-    
-    # Aplicar filtro por estado si se proporciona
-    if estado:
-        casos_filtrados = [c for c in casos_filtrados if c["estado"] == estado]
-    
-    return casos_filtrados
+    try:
+        # Obtener una sesión de base de datos
+        with next(get_database_session()) as db:
+            # Empezar con una consulta base
+            query = db.query(Caso)
+            
+            # Aplicar filtro por tipo si se especifica
+            if tipo is not None:
+                query = query.filter(Caso.tipo == tipo)
+            
+            # Aplicar filtro por estado si se especifica
+            if estado is not None:
+                query = query.filter(Caso.estado == estado)
+            
+            # Ordenar por fecha de creación (más recientes primero)
+            query = query.order_by(Caso.fecha_creacion.desc())
+            
+            # Ejecutar la consulta y obtener todos los resultados
+            casos_db = query.all()
+            
+            # Convertir cada caso a diccionario
+            return [caso.to_dict() for caso in casos_db]
+            
+    except Exception as e:
+        # Si hay cualquier error, lanzar una excepción HTTP
+        raise HTTPException(
+            status_code=500,
+            detail=f"Error al consultar los casos: {str(e)}"
+        )
 
 
 def obtener_caso_por_id(caso_id: str) -> Dict[str, Any]:
     """
-    Busca un caso específico por su ID único (UUID).
+    Busca un caso específico por su ID único (UUID) en la base de datos.
     
     El ID es un identificador único universal (UUID) que se genera automáticamente
     cuando se crea un caso. Es principalmente para uso interno del sistema.
@@ -211,7 +239,7 @@ def obtener_caso_por_id(caso_id: str) -> Dict[str, Any]:
         Dict[str, Any]: El caso encontrado
         
     Raises:
-        HTTPException: Si el caso no existe (404)
+        HTTPException: Si el caso no existe (404) o hay error en la consulta
         
     Ejemplo:
         >>> try:
@@ -220,19 +248,32 @@ def obtener_caso_por_id(caso_id: str) -> Dict[str, Any]:
         ... except HTTPException:
         ...     print("Caso no encontrado")
     """
-    # Buscar el caso en la "base de datos"
-    caso = next((c for c in casos_db if c["id"] == caso_id), None)
-    
-    # Si no se encuentra, lanzar excepción HTTP 404
-    if not caso:
-        raise HTTPException(status_code=404, detail="Caso no encontrado")
-    
-    return caso
+    try:
+        # Obtener una sesión de base de datos
+        with next(get_database_session()) as db:
+            # Buscar el caso por ID
+            caso = db.query(Caso).filter(Caso.id == caso_id).first()
+            
+            # Si no se encuentra, lanzar excepción HTTP 404
+            if not caso:
+                raise HTTPException(status_code=404, detail="Caso no encontrado")
+            
+            return caso.to_dict()
+            
+    except HTTPException:
+        # Re-lanzar excepciones HTTP (como 404)
+        raise
+    except Exception as e:
+        # Si hay cualquier otro error, lanzar una excepción HTTP 500
+        raise HTTPException(
+            status_code=500,
+            detail=f"Error al consultar el caso: {str(e)}"
+        )
 
 
 def obtener_caso_por_numero(numero_caso: str) -> Dict[str, Any]:
     """
-    Busca un caso específico por su número legible.
+    Busca un caso específico por su número legible en la base de datos.
     
     El número de caso es el identificador que se muestra a los usuarios
     (ej: "PET-0001", "QUE-0005"). Es más fácil de recordar y comunicar que el UUID.
@@ -244,7 +285,7 @@ def obtener_caso_por_numero(numero_caso: str) -> Dict[str, Any]:
         Dict[str, Any]: El caso encontrado
         
     Raises:
-        HTTPException: Si el caso no existe (404)
+        HTTPException: Si el caso no existe (404) o hay error en la consulta
         
     Ejemplo:
         >>> try:
@@ -253,19 +294,32 @@ def obtener_caso_por_numero(numero_caso: str) -> Dict[str, Any]:
         ... except HTTPException:
         ...     print("Número de caso inválido")
     """
-    # Buscar el caso en la "base de datos"
-    caso = next((c for c in casos_db if c["numero_caso"] == numero_caso), None)
-    
-    # Si no se encuentra, lanzar excepción HTTP 404
-    if not caso:
-        raise HTTPException(status_code=404, detail="Caso no encontrado")
-    
-    return caso
+    try:
+        # Obtener una sesión de base de datos
+        with next(get_database_session()) as db:
+            # Buscar el caso por número
+            caso = db.query(Caso).filter(Caso.numero_caso == numero_caso).first()
+            
+            # Si no se encuentra, lanzar excepción HTTP 404
+            if not caso:
+                raise HTTPException(status_code=404, detail="Caso no encontrado")
+            
+            return caso.to_dict()
+            
+    except HTTPException:
+        # Re-lanzar excepciones HTTP (como 404)
+        raise
+    except Exception as e:
+        # Si hay cualquier otro error, lanzar una excepción HTTP 500
+        raise HTTPException(
+            status_code=500,
+            detail=f"Error al consultar el caso: {str(e)}"
+        )
 
 
 def actualizar_caso_existente(caso_id: str, actualizacion: CasoUpdate) -> Dict[str, Any]:
     """
-    Actualiza un caso existente con nueva información.
+    Actualiza un caso existente con nueva información en la base de datos.
     
     Esta función permite:
     - Cambiar el estado del caso (ej: de "recibido" a "en_proceso")
@@ -283,7 +337,7 @@ def actualizar_caso_existente(caso_id: str, actualizacion: CasoUpdate) -> Dict[s
         Dict[str, Any]: El caso actualizado
         
     Raises:
-        HTTPException: Si el caso no existe (404)
+        HTTPException: Si el caso no existe (404) o hay error en la actualización
         
     Ejemplo:
         >>> # Cambiar estado a "en proceso"
@@ -297,24 +351,41 @@ def actualizar_caso_existente(caso_id: str, actualizacion: CasoUpdate) -> Dict[s
         ... )
         >>> caso_actualizado = actualizar_caso_existente(caso_id, actualizacion)
     """
-    # Buscar el caso en la "base de datos"
-    caso = next((c for c in casos_db if c["id"] == caso_id), None)
-    
-    # Si no se encuentra, lanzar excepción HTTP 404
-    if not caso:
-        raise HTTPException(status_code=404, detail="Caso no encontrado")
-    
-    # Actualizar solo los campos proporcionados (no None)
-    if actualizacion.estado:
-        caso["estado"] = actualizacion.estado
-    
-    if actualizacion.respuesta:
-        caso["respuesta"] = actualizacion.respuesta
-    
-    # SIEMPRE actualizar la fecha de modificación
-    caso["fecha_actualizacion"] = datetime.now()
-    
-    return caso
+    try:
+        # Obtener una sesión de base de datos
+        with next(get_database_session()) as db:
+            # Buscar el caso por ID
+            caso = db.query(Caso).filter(Caso.id == caso_id).first()
+            
+            # Si no se encuentra, lanzar excepción HTTP 404
+            if not caso:
+                raise HTTPException(status_code=404, detail="Caso no encontrado")
+            
+            # Actualizar solo los campos proporcionados (no None)
+            if actualizacion.estado is not None:
+                caso.estado = actualizacion.estado
+            
+            if actualizacion.respuesta is not None:
+                caso.respuesta = actualizacion.respuesta
+            
+            # SIEMPRE actualizar la fecha de modificación
+            caso.fecha_actualizacion = datetime.now()
+            
+            # Guardar los cambios en la base de datos
+            db.commit()
+            db.refresh(caso)
+            
+            return caso.to_dict()
+            
+    except HTTPException:
+        # Re-lanzar excepciones HTTP (como 404)
+        raise
+    except Exception as e:
+        # Si hay cualquier otro error, lanzar una excepción HTTP 500
+        raise HTTPException(
+            status_code=500,
+            detail=f"Error al actualizar el caso: {str(e)}"
+        )
 
 
 # ============================================================================
@@ -323,7 +394,7 @@ def actualizar_caso_existente(caso_id: str, actualizacion: CasoUpdate) -> Dict[s
 
 def obtener_estadisticas_sistema() -> Dict[str, Any]:
     """
-    Genera estadísticas completas del sistema PQRSD.
+    Genera estadísticas completas del sistema PQRSD desde la base de datos.
     
     Calcula y retorna información útil para:
     - Administradores: Ver carga de trabajo y distribución de casos
@@ -333,6 +404,9 @@ def obtener_estadisticas_sistema() -> Dict[str, Any]:
     
     Returns:
         Dict[str, Any]: Diccionario con estadísticas del sistema
+        
+    Raises:
+        HTTPException: Si hay un error al consultar la base de datos
         
     Estructura del retorno:
         {
@@ -360,37 +434,50 @@ def obtener_estadisticas_sistema() -> Dict[str, Any]:
         >>> print(f"Casos pendientes: {stats['casos_por_estado']['recibido']}")
         >>> print(f"Último caso: {stats['ultimo_numero']}")
     """
-    total_casos = len(casos_db)
-    
-    # Contar casos por tipo
-    casos_por_tipo = {}
-    for tipo in TipoCaso:
-        # Contar cuántos casos hay de cada tipo
-        casos_por_tipo[tipo.value] = len([c for c in casos_db if c["tipo"] == tipo])
-    
-    # Contar casos por estado  
-    casos_por_estado = {}
-    for estado in EstadoCaso:
-        # Contar cuántos casos hay en cada estado
-        casos_por_estado[estado.value] = len([c for c in casos_db if c["estado"] == estado])
-    
-    return {
-        "total_casos": total_casos,
-        "casos_por_tipo": casos_por_tipo,
-        "casos_por_estado": casos_por_estado,
-        "ultimo_numero": casos_db[-1]["numero_caso"] if casos_db else "Ninguno"
-    }
+    try:
+        # Obtener una sesión de base de datos
+        with next(get_database_session()) as db:
+            # Contar total de casos
+            total_casos = db.query(Caso).count()
+            
+            # Contar casos por tipo
+            casos_por_tipo = {}
+            for tipo in TipoCaso:
+                casos_por_tipo[tipo.value] = db.query(Caso).filter(Caso.tipo == tipo).count()
+            
+            # Contar casos por estado  
+            casos_por_estado = {}
+            for estado in EstadoCaso:
+                casos_por_estado[estado.value] = db.query(Caso).filter(Caso.estado == estado).count()
+            
+            # Obtener el último caso creado
+            ultimo_caso = db.query(Caso).order_by(Caso.fecha_creacion.desc()).first()
+            ultimo_numero = ultimo_caso.numero_caso if ultimo_caso else "Ninguno"
+            
+            return {
+                "total_casos": total_casos,
+                "casos_por_tipo": casos_por_tipo,
+                "casos_por_estado": casos_por_estado,
+                "ultimo_numero": ultimo_numero
+            }
+            
+    except Exception as e:
+        # Si hay cualquier error, lanzar una excepción HTTP
+        raise HTTPException(
+            status_code=500,
+            detail=f"Error al generar estadísticas: {str(e)}"
+        )
 
 
 # ============================================================================
 # NOTAS PARA PRINCIPIANTES
 # ============================================================================
 
-# 1. ¿Por qué usar una lista en lugar de una base de datos real?
-#    - Simplicidad: No requiere configurar PostgreSQL, MySQL, etc.
-#    - Educativo: Fácil de entender cómo funcionan las operaciones
-#    - Prototipado: Rápido para probar ideas
-#    - Limitaciones: Los datos se pierden al reiniciar
+# 1. ¿Por qué usar SQLite como base de datos?
+#    - Simplicidad: No requiere servidor separado como PostgreSQL, MySQL
+#    - Persistencia: Los datos se guardan permanentemente en archivo
+#    - Educativo: Fácil de entender SQL y operaciones de base de datos
+#    - Portabilidad: Un solo archivo contiene toda la base de datos
 
 # 2. ¿Qué es un UUID?
 #    - Universal Unique Identifier: Identificador único universal
