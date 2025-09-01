@@ -97,7 +97,7 @@ def crear_datos_de_ejemplo():
     # Datos de ejemplo
     casos_ejemplo = [
         {
-            "numero_caso": "PET-2024-001",
+            "numero_caso": "PET-001",
             "tipo": TipoCaso.PETICION,
             "asunto": "Solicitud de información sobre licencias",
             "descripcion": "Necesito conocer los requisitos para obtener una licencia de funcionamiento para mi negocio de panadería.",
@@ -107,7 +107,7 @@ def crear_datos_de_ejemplo():
             "estado": EstadoCaso.RECIBIDO
         },
         {
-            "numero_caso": "QUE-2024-001",
+            "numero_caso": "QUE-001",
             "tipo": TipoCaso.QUEJA,
             "asunto": "Demora en atención al público",
             "descripcion": "El tiempo de espera en la oficina de atención al ciudadano fue de más de 2 horas para un trámite simple.",
@@ -117,7 +117,7 @@ def crear_datos_de_ejemplo():
             "estado": EstadoCaso.EN_PROCESO
         },
         {
-            "numero_caso": "REC-2024-001",
+            "numero_caso": "REC-001",
             "tipo": TipoCaso.RECLAMO,
             "asunto": "Cobro indebido en factura",
             "descripcion": "Se me cobró un valor adicional que no corresponde según la tarifa oficial publicada.",
@@ -128,7 +128,7 @@ def crear_datos_de_ejemplo():
             "respuesta": "Se ha verificado el cobro y se procederá con el reembolso correspondiente. El valor será devuelto en los próximos 5 días hábiles."
         },
         {
-            "numero_caso": "SUG-2024-001",
+            "numero_caso": "SUG-001",
             "tipo": TipoCaso.SUGERENCIA,
             "asunto": "Implementar sistema de citas online",
             "descripcion": "Propongo implementar un sistema de citas por internet para evitar las largas filas y optimizar la atención.",

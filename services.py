@@ -23,11 +23,8 @@ En nuestro caso:
 
 from typing import List, Optional, Dict, Any
 from datetime import datetime
-import uuid
 from fastapi import HTTPException
-from sqlalchemy.orm import Session
-from sqlalchemy import and_, or_
-
+from sqlalchemy import extract
 from enums import TipoCaso, EstadoCaso
 from models import CasoCreate, CasoUpdate
 from database import get_database_session
@@ -51,9 +48,10 @@ def generar_numero_caso(tipo: TipoCaso) -> str:
     """
     Genera un número único y legible para identificar un caso basado en su tipo.
     
-    Formato: "XXX-NNNN" donde:
+    Formato: "XXX-YYYY-NNN" donde:
     - XXX: Prefijo según el tipo de caso
-    - NNNN: Número secuencial con 4 dígitos (0001, 0002, 0003...)
+    - YYYY: Año actual
+    - NNN: Número secuencial con 3 dígitos (001, 002, 003...)
     
     Prefijos por tipo:
     - PET: Peticiones
@@ -63,22 +61,23 @@ def generar_numero_caso(tipo: TipoCaso) -> str:
     - DEN: Denuncias
     
     Ejemplos:
-    - PET-0001 (Primera petición)
-    - QUE-0005 (Quinta queja)
-    - REC-0012 (Reclamo número 12)
+    - PET-2025-001 (Primera petición del 2025)
+    - QUE-2025-005 (Quinta queja del 2025)
+    - REC-2026-001 (Primer reclamo del 2026, reinicia contador)
     
     Args:
         tipo (TipoCaso): Tipo de caso para determinar el prefijo
         
     Returns:
-        str: Número de caso único con formato tipo-específico
+        str: Número de caso único con formato tipo-año-secuencial
         
     Nota:
-        En un sistema real, podrías incluir:
-        - Año actual (ej: PET-2024-0001)
-        - Código de la entidad (ej: ALCALDIA-PET-0001)
-        - Sede o dependencia (ej: PET-BOG-0001)
+        El contador se reinicia cada año, permitiendo una mejor organización
+        y evitando números excesivamente largos con el tiempo.
     """
+    # Obtener el año actual para incluirlo en el número de caso
+    año_actual = datetime.now().year
+
     # Mapeo de tipos de caso a prefijos legibles
     prefijos = {
         TipoCaso.PETICION: "PET",
@@ -90,10 +89,14 @@ def generar_numero_caso(tipo: TipoCaso) -> str:
     
     # Obtener una sesión de base de datos para contar casos del mismo tipo
     with next(get_database_session()) as db:
-        contador = db.query(Caso).filter(Caso.tipo == tipo).count() + 1
+        # Filtrar por tipo y año actual
+        contador = db.query(Caso).filter(
+            Caso.tipo == tipo,
+            extract('year', Caso.fecha_creacion) == año_actual
+        ).count() + 1
     
-    # Generar número con formato: PREFIJO-NNNN
-    return f"{prefijos[tipo]}-{contador:04d}"
+    # Generar número con formato: PREFIJO-AÑO-NNN
+    return f"{prefijos[tipo]}-{año_actual}-{contador:03d}"
 
 
 # ============================================================================
