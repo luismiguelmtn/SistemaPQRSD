@@ -214,7 +214,7 @@ def obtener_caso_por_numero_endpoint(numero_caso: str):
     URL: http://localhost:8000/casos/numero/{numero_caso}
     
     Parámetros de ruta:
-    - numero_caso (str): El número público del caso (ej: "CASO-001")
+    - numero_caso (str): El número público del caso (ej: "CASO-202X-001")
     
     ¿Por qué dos formas de buscar casos?
     - Por ID: Para uso interno del sistema (más eficiente)
