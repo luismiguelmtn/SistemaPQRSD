@@ -1,20 +1,36 @@
 # -*- coding: utf-8 -*-
 """
-Enumeraciones para el Sistema PQRSD
+🏷️ Enumeraciones para Sistema PQRSD con PostgreSQL
 
-Este archivo contiene las enumeraciones (Enum) que definen los valores
-permitidos para diferentes campos en el sistema PQRSD.
+Este archivo define los valores constantes permitidos para campos específicos,
+optimizado para trabajar con PostgreSQL y enums nativos.
 
-¿Qué es una Enumeración?
-Una enumeración es una forma de definir un conjunto fijo de valores constantes.
-En lugar de usar strings sueltos como "peticion" o "queja", usamos enums
-para tener mejor control, validación automática y evitar errores de tipeo.
+🔧 ARQUITECTURA DE ENUMS:
+┌─────────────┐    ┌─────────────┐    ┌─────────────┐
+│   Python    │───▶│  Pydantic   │───▶│ PostgreSQL  │
+│   Enum      │    │ Validation  │    │ Native Enum │
+└─────────────┘    └─────────────┘    └─────────────┘
 
-Ventajas de usar Enums:
-- Previene errores de tipeo (si escribes "peticiom" en lugar de "peticion")
-- Autocompletado en el IDE
-- Validación automática por parte de Pydantic
-- Código más legible y mantenible
+🚀 VENTAJAS DE ESTA IMPLEMENTACIÓN:
+✓ Prevención de errores de tipeo
+✓ Autocompletado inteligente en IDE
+✓ Validación automática en API
+✓ Enums nativos en PostgreSQL
+✓ Índices optimizados en BD
+✓ Integridad referencial garantizada
+✓ Consultas más eficientes
+✓ Documentación automática en Swagger
+
+🐘 OPTIMIZACIONES POSTGRESQL:
+- Enums nativos para mejor rendimiento
+- Índices automáticos en columnas enum
+- Validación a nivel de base de datos
+- Menor uso de espacio de almacenamiento
+- Consultas más rápidas con comparaciones directas
+
+📊 ENUMS DEFINIDOS:
+- TipoCaso: Categorías PQRSD (Petición, Queja, Reclamo, Sugerencia, Denuncia)
+- EstadoCaso: Flujo de estados (Recibido → En Proceso → Resuelto → Cerrado)
 """
 
 from enum import Enum

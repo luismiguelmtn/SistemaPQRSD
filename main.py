@@ -1,39 +1,51 @@
-# main.py - Sistema PQRSD Básico
+# main.py - Sistema PQRSD con PostgreSQL
 """
-Este es el archivo principal de la aplicación FastAPI del Sistema PQRSD.
+🏢 Sistema PQRSD - Empresa de Seguridad del Oriente (ESO)
 
-¿Qué hace este archivo?
-Este archivo es el punto de entrada de nuestra aplicación. Aquí:
-1. Creamos la instancia principal de FastAPI
-2. Configuramos los metadatos de la aplicación (título, descripción, versión)
-3. Incluimos todas las rutas definidas en otros módulos
-4. Configuramos cualquier middleware o configuración global
+Este es el archivo principal de la aplicación FastAPI del Sistema PQRSD,
+optimizado para funcionar con PostgreSQL como base de datos empresarial.
 
-¿Qué es FastAPI?
-FastAPI es un framework web moderno y rápido para construir APIs con Python.
-Sus principales características son:
-- Muy rápido (comparable a NodeJS y Go)
-- Fácil de usar y aprender
-- Genera documentación automática
-- Validación automática de datos
-- Soporte nativo para async/await
-- Basado en estándares como OpenAPI y JSON Schema
+🚀 CARACTERÍSTICAS PRINCIPALES:
+✓ API REST moderna con FastAPI
+✓ Base de datos PostgreSQL con pool de conexiones
+✓ Documentación automática (Swagger/OpenAPI)
+✓ Validación de datos con Pydantic
+✓ Manejo robusto de errores
+✓ Logging detallado para auditoría
+✓ Configuración por variables de entorno
 
-¿Qué es una API?
-Una API (Application Programming Interface) es un conjunto de reglas y protocolos
-que permite que diferentes aplicaciones se comuniquen entre sí. En nuestro caso,
-creamos una API REST que puede ser consumida por:
-- Aplicaciones web (frontend)
-- Aplicaciones móviles
-- Otros sistemas
-- Herramientas de testing
+🏗️ ARQUITECTURA DEL SISTEMA:
+┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
+│   Frontend      │───▶│   FastAPI       │───▶│   PostgreSQL    │
+│   (Web/Mobile)  │    │   (main.py)     │    │   (database.py) │
+└─────────────────┘    └─────────────────┘    └─────────────────┘
+                              │
+                              ▼
+                       ┌─────────────────┐
+                       │   Services      │
+                       │   (Lógica)      │
+                       └─────────────────┘
 
-Estructura del proyecto:
-- main.py: Configuración principal de la aplicación
-- routes.py: Definición de endpoints/rutas
-- models.py: Modelos de datos (esquemas)
-- services.py: Lógica de negocio
-- enums.py: Enumeraciones y constantes
+📁 ESTRUCTURA DEL PROYECTO:
+- main.py: 🎯 Configuración principal y punto de entrada
+- routes.py: 🛣️ Definición de endpoints REST
+- models.py: 📋 Esquemas Pydantic para validación
+- services.py: ⚙️ Lógica de negocio y operaciones CRUD
+- database.py: 🐘 Configuración PostgreSQL y conexiones
+- db_models.py: 🗃️ Modelos SQLAlchemy para ORM
+- enums.py: 📝 Enumeraciones y constantes
+- init_db.py: 🔧 Inicialización y gestión de BD
+
+🔧 CONFIGURACIÓN REQUERIDA:
+1. PostgreSQL instalado y corriendo
+2. Variables de entorno configuradas (.env)
+3. Dependencias Python instaladas (requirements.txt)
+4. Base de datos inicializada (python init_db.py --crear)
+
+📚 DOCUMENTACIÓN AUTOMÁTICA:
+- Swagger UI: http://localhost:8000/docs
+- ReDoc: http://localhost:8000/redoc
+- OpenAPI JSON: http://localhost:8000/openapi.json
 """
 
 # ============================================================================

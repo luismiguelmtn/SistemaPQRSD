@@ -1,14 +1,19 @@
 # requirements.txt - Dependencias del Sistema PQRSD
+# Sistema de gestión de Peticiones, Quejas, Reclamos, Sugerencias y Denuncias
 
-# Framework web y servidor
-fastapi>=0.68.0
-uvicorn>=0.15.0
+# Framework web y servidor ASGI
+fastapi>=0.68.0          # Framework web moderno y rápido para APIs
+uvicorn>=0.15.0          # Servidor ASGI de alto rendimiento
 
-# Validación de datos
-pydantic>=1.8.0
-email-validator>=1.1.0
-python-multipart>=0.0.5
+# Validación y serialización de datos
+pydantic>=1.8.0         # Validación de datos con type hints
+email-validator>=1.1.0  # Validación específica para emails
+python-multipart>=0.0.5 # Soporte para formularios multipart
 
-# Base de datos y ORM
-sqlalchemy>=1.4.0
-alembic>=1.7.0  # Para migraciones de base de datos (opcional pero recomendado)
+# Base de datos PostgreSQL y ORM
+sqlalchemy>=1.4.0        # ORM (Object-Relational Mapping) para Python
+psycopg2-binary>=2.9.0  # Driver PostgreSQL para Python (versión binaria)
+alembic>=1.7.0          # Herramienta de migraciones de base de datos
+
+# Gestión de configuración y variables de entorno
+python-dotenv>=0.19.0   # Carga variables de entorno desde archivos .env

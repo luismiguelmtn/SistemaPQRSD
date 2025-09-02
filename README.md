@@ -1,193 +1,255 @@
-# Sistema PQRSD
+# 🚀 Sistema PQRSD - Producción
 
-Sistema de Peticiones, Quejas, Reclamos, Sugerencias y Denuncias desarrollado con FastAPI.
+Sistema de Peticiones, Quejas, Reclamos, Sugerencias y Denuncias desarrollado con **FastAPI** y **PostgreSQL** para entornos de producción.
 
-## Descripción
+## 📋 Descripción
 
-Este sistema permite gestionar casos PQRSD de manera eficiente, proporcionando una API REST para crear, consultar, actualizar y obtener estadísticas de los casos.
+Sistema robusto y escalable para gestionar casos PQRSD con:
+- ✅ **API REST completa** con FastAPI
+- ✅ **Base de datos PostgreSQL** para producción
+- ✅ **Validaciones automáticas** con Pydantic
+- ✅ **Documentación interactiva** con Swagger
+- ✅ **Arquitectura escalable** y mantenible
 
-## Estructura del Proyecto
+## 🏗️ Estructura del Proyecto
 
 ```
 pqrsd-eso/
-├── main.py          # Configuración principal de FastAPI
-├── routes.py        # Endpoints de la API
-├── services.py      # Lógica de negocio y servicios
-├── models.py        # Modelos Pydantic
-├── enums.py         # Enumeraciones (TipoCaso, EstadoCaso)
-├── requirements.txt # Dependencias del proyecto
-├── venv/           # Entorno virtual (no incluir en git)
-└── README.md       # Este archivo
+├── main.py              # Configuración principal de FastAPI
+├── routes.py            # Endpoints de la API
+├── services.py          # Lógica de negocio y servicios
+├── models.py            # Modelos Pydantic para validación
+├── db_models.py         # Modelos SQLAlchemy para PostgreSQL
+├── database.py          # Configuración de base de datos
+├── enums.py             # Enumeraciones (TipoCaso, EstadoCaso)
+├── init_db.py           # Script de inicialización de BD
+├── setup_produccion.py  # Script de configuración automática
+├── .env                 # Variables de entorno (NO incluir en git)
+├── requirements.txt     # Dependencias del proyecto
+├── GUIAS/              # Documentación técnica
+│   ├── GUIA_MIGRACION_POSTGRESQL.md
+│   ├── GUIA_BASE_DE_DATOS.md
+│   ├── GUIA_ENDPOINTS.md
+│   └── EJEMPLO_FLUJO_DATOS.md
+└── README.md           # Este archivo
 ```
 
-## Instalación
+## 🚀 Instalación para Producción
 
-### Prerrequisitos
+### 📋 Prerrequisitos
 
-- Python 3.8 o superior
-- pip (gestor de paquetes de Python)
+- **Python 3.8+**
+- **PostgreSQL 12+** instalado y corriendo
+- **pip** (gestor de paquetes de Python)
 
-### Pasos de instalación
+### 🔧 Configuración Rápida
 
-1. **Clonar o descargar el proyecto**
+1. **Preparar el entorno**
    ```bash
    cd pqrsd-eso
-   ```
-
-2. **Crear entorno virtual**
-   ```bash
    python -m venv venv
-   ```
-
-3. **Activar entorno virtual**
    
-   En Windows:
-   ```bash
+   # Windows
    venv\Scripts\activate
-   ```
    
-   En macOS/Linux:
-   ```bash
+   # Linux/macOS
+   source venv/bin/activate
    source venv/bin/activate
    ```
 
-4. **Instalar dependencias**
+2. **Instalar dependencias**
    ```bash
    pip install -r requirements.txt
    ```
 
-## Uso
+3. **Configurar PostgreSQL**
+   ```sql
+   -- Crear base de datos
+   CREATE DATABASE pqrsd_sistema;
+   
+   -- Crear usuario (opcional)
+   CREATE USER pqrsd_user WITH PASSWORD 'tu_contraseña_segura';
+   GRANT ALL PRIVILEGES ON DATABASE pqrsd_sistema TO pqrsd_user;
+   ```
 
-### Ejecutar el servidor
+4. **Configurar variables de entorno**
+   ```bash
+   # Editar archivo .env
+   DB_HOST=localhost
+   DB_PORT=5432
+   DB_NAME=pqrsd_sistema
+   DB_USER=tu_usuario_postgresql
+   DB_PASSWORD=tu_contraseña_postgresql
+   DB_ECHO=false
+   APP_NAME=Sistema PQRSD
+   APP_VERSION=1.0.0
+   APP_DEBUG=false
+   ```
+
+5. **Configuración automática**
+   ```bash
+   python setup_produccion.py
+   ```
+
+## 🌐 Despliegue en Producción
+
+### 🚀 Iniciar el servidor
 
 ```bash
-python -m uvicorn main:app --reload
+# Desarrollo
+uvicorn main:app --host 0.0.0.0 --port 8000 --reload
+
+# Producción
+uvicorn main:app --host 0.0.0.0 --port 8000 --workers 4
 ```
 
-El servidor estará disponible en: http://127.0.0.1:8000
+### 📚 Documentación de la API
 
-### Documentación de la API
+- **Swagger UI**: http://localhost:8000/docs
+- **ReDoc**: http://localhost:8000/redoc
+- **OpenAPI JSON**: http://localhost:8000/openapi.json
 
-Una vez que el servidor esté ejecutándose, puedes acceder a:
+## 🔗 Endpoints Principales
 
-- **Documentación interactiva (Swagger)**: http://127.0.0.1:8000/docs
-- **Documentación alternativa (ReDoc)**: http://127.0.0.1:8000/redoc
+### 📋 Casos PQRSD
 
-## Endpoints Principales
+| Método | Endpoint | Descripción |
+|--------|----------|-------------|
+| `POST` | `/casos/` | Crear nuevo caso |
+| `GET` | `/casos/` | Listar casos (con filtros) |
+| `GET` | `/casos/{caso_id}` | Obtener caso por ID |
+| `GET` | `/casos/numero/{numero_caso}` | Obtener caso por número |
+| `PUT` | `/casos/{caso_id}` | Actualizar caso |
 
-### Casos PQRSD
+### 📊 Estadísticas
 
-- `POST /casos/` - Crear un nuevo caso
-- `GET /casos/` - Listar todos los casos (con filtros opcionales)
-- `GET /casos/{caso_id}` - Obtener un caso por ID
-- `GET /casos/numero/{numero_caso}` - Obtener un caso por número
-- `PUT /casos/{caso_id}` - Actualizar un caso
+| Método | Endpoint | Descripción |
+|--------|----------|-------------|
+| `GET` | `/estadisticas/` | Estadísticas del sistema |
 
-### Estadísticas
+## 💡 Ejemplos de Uso
 
-- `GET /estadisticas/` - Obtener estadísticas del sistema
-
-### Ejemplo de uso
-
-#### Crear un nuevo caso
+### Crear un nuevo caso
 
 ```bash
-curl -X POST "http://127.0.0.1:8000/casos/" \
+curl -X POST "http://localhost:8000/casos/" \
      -H "Content-Type: application/json" \
      -d '{
        "tipo": "peticion",
        "asunto": "Solicitud de información",
-       "descripcion": "Necesito información sobre...",
+       "descripcion": "Necesito información sobre horarios de atención",
        "nombre_solicitante": "Juan Pérez",
        "email_solicitante": "juan@email.com",
-       "telefono_solicitante": "123456789"
+       "telefono_solicitante": "3001234567"
      }'
+```
 
-**Respuesta esperada:**
-```json
-{
-  "id": 1,
-  "numero_caso": "PET-0001",
-  "tipo": "peticion",
-  "estado": "recibido",
-  "asunto": "Solicitud de información",
-  "descripcion": "Necesito información sobre los horarios de atención",
-  "nombre_solicitante": "Juan Pérez",
-  "email_solicitante": "juan@email.com",
-  "telefono_solicitante": "123456789",
-  "fecha_creacion": "2024-01-15T10:30:00",
-  "fecha_actualizacion": "2024-01-15T10:30:00",
-  "respuesta": null
+### Listar casos con filtros
+
+```bash
+# Todos los casos
+curl "http://localhost:8000/casos/"
+
+# Solo peticiones
+curl "http://localhost:8000/casos/?tipo=peticion"
+
+# Solo casos pendientes
+curl "http://localhost:8000/casos/?estado=recibido"
+```
+
+### Ver estadísticas
+
+```bash
+curl "http://localhost:8000/estadisticas/"
+```
+
+## 🏗️ Arquitectura del Sistema
+
+### 📊 Base de Datos PostgreSQL
+
+- **Enums nativos** para tipos y estados
+- **Índices optimizados** para consultas rápidas
+- **Validaciones a nivel de BD** para integridad
+- **Timestamps automáticos** para auditoría
+
+### 🔧 Tecnologías Utilizadas
+
+- **FastAPI**: Framework web moderno y rápido
+- **PostgreSQL**: Base de datos robusta para producción
+- **SQLAlchemy**: ORM para manejo de base de datos
+- **Pydantic**: Validación de datos automática
+- **Uvicorn**: Servidor ASGI de alto rendimiento
+
+## 🔒 Configuración de Producción
+
+### 🌐 Proxy Reverso (Nginx)
+
+```nginx
+server {
+    listen 80;
+    server_name tu-dominio.com;
+    
+    location / {
+        proxy_pass http://127.0.0.1:8000;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
 }
 ```
 
-#### 📋 Listar casos con filtros
-
-**Ver todos los casos:**
-```bash
-curl "http://127.0.0.1:8000/casos/"
-```
-
-**Ver solo las peticiones:**
-```bash
-curl "http://127.0.0.1:8000/casos/?tipo=peticion"
-```
-
-**Ver solo casos pendientes:**
-```bash
-curl "http://127.0.0.1:8000/casos/?estado=recibido"
-```
-
-#### 📊 Ver estadísticas
+### 🔐 HTTPS con Let's Encrypt
 
 ```bash
-curl "http://127.0.0.1:8000/estadisticas/"
+# Instalar Certbot
+sudo apt install certbot python3-certbot-nginx
+
+# Obtener certificado SSL
+sudo certbot --nginx -d tu-dominio.com
 ```
 
-**Respuesta esperada:**
-```json
-{
-  "total_casos": 5,
-  "por_tipo": {
-    "peticion": 2,
-    "queja": 1,
-    "reclamo": 1,
-    "sugerencia": 1
-  },
-  "por_estado": {
-    "recibido": 3,
-    "en_proceso": 1,
-    "resuelto": 1
-  }
-}
-```
+### 📊 Monitoreo y Logs
+
+```bash
+# Ver logs en tiempo real
+tail -f /var/log/nginx/access.log
+
+# Monitorear procesos
+ps aux | grep uvicorn
+
+# Verificar conexiones PostgreSQL
+sudo -u postgres psql -c "SELECT * FROM pg_stat_activity;"
 ```
 
-## Tipos de Casos
+## 🛡️ Seguridad
 
-- **PETICION**: Solicitudes de información o servicios (Prefijo: PET)
-- **QUEJA**: Manifestaciones de insatisfacción (Prefijo: QUE)
-- **RECLAMO**: Solicitudes de corrección o compensación (Prefijo: REC)
-- **SUGERENCIA**: Propuestas de mejora (Prefijo: SUG)
-- **DENUNCIA**: Reportes de irregularidades (Prefijo: DEN)
+- ✅ **Variables de entorno** para credenciales
+- ✅ **Validación de entrada** con Pydantic
+- ✅ **Conexiones seguras** a PostgreSQL
+- ✅ **CORS configurado** para APIs
+- ✅ **Rate limiting** recomendado
 
-### Formato de Números de Caso
+## 📚 Documentación Adicional
 
-Cada caso recibe un número único legible con el formato: `PREFIJO-NNNN`
+Consulta la carpeta `GUIAS/` para documentación detallada:
 
-Ejemplos:
-- `PET-0001`: Primera petición
-- `QUE-0001`: Primera queja
-- `REC-0002`: Segunda reclamación
+- **GUIA_MIGRACION_POSTGRESQL.md**: Migración completa
+- **GUIA_BASE_DE_DATOS.md**: Estructura de BD
+- **GUIA_ENDPOINTS.md**: Documentación de API
+- **EJEMPLO_FLUJO_DATOS.md**: Flujo de datos
 
-### Sistema de IDs
+## 🆘 Soporte
 
-- **ID interno**: Entero secuencial (1, 2, 3, ...) para uso del sistema
-- **Número de caso**: Formato legible para usuarios y seguimiento
+Para problemas o consultas:
+1. Revisa los logs del servidor
+2. Verifica la conexión a PostgreSQL
+3. Consulta la documentación en `/docs`
+4. Revisa las guías técnicas
 
-## Estados de Casos
+---
 
-- **RECIBIDO**: Caso recién creado
+**🚀 Sistema PQRSD listo para producción con PostgreSQL** 🎉
 - **EN_PROCESO**: Caso en revisión
 - **RESUELTO**: Caso con respuesta
 - **CERRADO**: Caso finalizado

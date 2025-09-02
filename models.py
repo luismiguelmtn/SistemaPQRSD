@@ -1,23 +1,42 @@
 # -*- coding: utf-8 -*-
 """
-Modelos Pydantic para el Sistema PQRSD
+📋 Modelos Pydantic para Sistema PQRSD con PostgreSQL
 
-Este archivo contiene los modelos de datos que definen la estructura
-y validación de la información que maneja el sistema PQRSD.
+Este archivo define los esquemas de validación de datos que actúan como
+interfaz entre la API REST y la base de datos PostgreSQL.
 
-¿Qué es Pydantic?
-Pydantic es una librería de Python que permite:
-- Validar automáticamente los tipos de datos
-- Convertir datos de entrada al tipo correcto
-- Generar documentación automática de la API
-- Serializar/deserializar datos (JSON ↔ Python)
+🔄 FLUJO DE DATOS:
+┌─────────────┐    ┌─────────────┐    ┌─────────────┐
+│   Cliente   │───▶│   Pydantic  │───▶│ PostgreSQL  │
+│   (JSON)    │    │  (Validar)  │    │ (SQLAlchemy)│
+└─────────────┘    └─────────────┘    └─────────────┘
 
-¿Qué es un BaseModel?
-Es la clase base de Pydantic que proporciona:
-- Validación automática de tipos
-- Conversión de datos
-- Métodos para exportar a dict/JSON
-- Validación de campos obligatorios vs opcionales
+🚀 CARACTERÍSTICAS PYDANTIC:
+✓ Validación automática de tipos de datos
+✓ Conversión inteligente de formatos
+✓ Documentación automática en Swagger
+✓ Serialización JSON bidireccional
+✓ Validaciones personalizadas con Field()
+✓ Manejo de campos opcionales y requeridos
+✓ Integración perfecta con FastAPI
+
+📊 MODELOS DEFINIDOS:
+- CasoCreate: Datos para crear nuevo caso
+- CasoResponse: Respuesta completa de caso
+- CasoUpdate: Datos para actualizar caso
+
+🔒 VALIDACIONES IMPLEMENTADAS:
+- Longitudes mínimas y máximas
+- Formatos de email válidos
+- Enums para tipos y estados
+- Campos opcionales vs obligatorios
+- Ejemplos para documentación automática
+
+🐘 OPTIMIZADO PARA POSTGRESQL:
+- Tipos compatibles con SQLAlchemy
+- Manejo de fechas ISO 8601
+- Soporte para enums nativos
+- Validación de integridad referencial
 """
 
 from pydantic import BaseModel, EmailStr, Field

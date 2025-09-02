@@ -32,12 +32,17 @@ from db_models import Caso
 
 
 # ============================================================================
-# BASE DE DATOS REAL CON SQLALCHEMY
+# BASE DE DATOS POSTGRESQL CON SQLALCHEMY
 # ============================================================================
 
-# IMPORTANTE: Ahora usamos una base de datos real (SQLite)
-# Los datos se guardan permanentemente en el archivo pqrsd_sistema.db
-# Ya no necesitamos la lista en memoria casos_db
+# IMPORTANTE: Ahora usamos PostgreSQL como base de datos principal
+# Los datos se almacenan en un servidor PostgreSQL con todas sus ventajas:
+# ✓ Concurrencia real y transacciones ACID
+# ✓ Índices optimizados para consultas complejas
+# ✓ Escalabilidad horizontal y vertical
+# ✓ Funciones avanzadas de fecha/hora y agregación
+# ✓ Respaldos automáticos y replicación
+# ✓ Seguridad empresarial con roles y permisos
 
 
 # ============================================================================
@@ -473,14 +478,15 @@ def obtener_estadisticas_sistema() -> Dict[str, Any]:
 
 
 # ============================================================================
-# NOTAS PARA PRINCIPIANTES
+# NOTAS PARA PRINCIPIANTES - POSTGRESQL
 # ============================================================================
 
-# 1. ¿Por qué usar SQLite como base de datos?
-#    - Simplicidad: No requiere servidor separado como PostgreSQL, MySQL
-#    - Persistencia: Los datos se guardan permanentemente en archivo
-#    - Educativo: Fácil de entender SQL y operaciones de base de datos
-#    - Portabilidad: Un solo archivo contiene toda la base de datos
+# 1. ¿Por qué usar PostgreSQL como base de datos?
+#    - Robustez: Base de datos empresarial con transacciones ACID completas
+#    - Escalabilidad: Maneja millones de registros y múltiples usuarios concurrentes
+#    - Funcionalidades: Índices avanzados, funciones de agregación, tipos de datos ricos
+#    - Estándares: Cumple completamente con SQL estándar y extensiones avanzadas
+#    - Seguridad: Autenticación, autorización y encriptación de nivel empresarial
 
 # 2. ¿Qué es un UUID?
 #    - Universal Unique Identifier: Identificador único universal
@@ -498,13 +504,13 @@ def obtener_estadisticas_sistema() -> Dict[str, Any]:
 #    - Si no encuentra nada, retorna el valor por defecto (None)
 #    - Es más eficiente que recorrer toda la lista
 
-# 5. En un sistema real, este archivo tendría:
-#    - Conexión a base de datos (SQLAlchemy, Django ORM, etc.)
-#    - Manejo de transacciones para operaciones atómicas
-#    - Validaciones de negocio más complejas
-#    - Logging de todas las operaciones
-#    - Manejo de errores más robusto
-#    - Paginación para listas grandes
-#    - Índices para búsquedas rápidas
-#    - Cache para consultas frecuentes
-#    - Auditoría de cambios (quién, cuándo, qué cambió)
+# 5. Ventajas de PostgreSQL implementadas en este sistema:
+#    ✓ Conexión con pool de conexiones para mejor rendimiento
+#    ✓ Transacciones automáticas con rollback en caso de error
+#    ✓ Índices compuestos optimizados para consultas frecuentes
+#    ✓ Funciones de fecha/hora del servidor (func.now())
+#    ✓ Enums nativos para mejor integridad de datos
+#    ✓ Logging detallado de operaciones y errores
+#    ✓ Manejo robusto de errores con códigos HTTP apropiados
+#    ✓ Validaciones de negocio integradas con Pydantic
+#    ✓ Preparado para auditoría y escalabilidad futura

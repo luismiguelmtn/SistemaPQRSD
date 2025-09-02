@@ -1,52 +1,87 @@
 # -*- coding: utf-8 -*-
 """
-Modelos de Base de Datos para el Sistema PQRSD
+Modelos de Base de Datos PostgreSQL para el Sistema PQRSD ESO
 
-Este archivo define las tablas de la base de datos usando SQLAlchemy.
+Este archivo define las tablas de PostgreSQL usando SQLAlchemy ORM.
+Optimizado para PostgreSQL con índices, restricciones y tipos de datos específicos.
 
-¿Cuál es la diferencia entre models.py y db_models.py?
+🏗️ ARQUITECTURA DE MODELOS:
 
-- models.py (Pydantic): Define la estructura de datos para la API
-  - Validación de entrada/salida
-  - Serialización JSON
-  - Documentación automática
+📋 models.py (Pydantic): Modelos de API y validación
+  ✓ Validación de entrada/salida HTTP
+  ✓ Serialización/deserialización JSON
+  ✓ Documentación automática OpenAPI
+  ✓ Esquemas de respuesta de la API
 
-- db_models.py (SQLAlchemy): Define la estructura de las tablas en la base de datos
-  - Columnas y tipos de datos
-  - Relaciones entre tablas
-  - Índices y restricciones
+🗄️ db_models.py (SQLAlchemy): Modelos de base de datos PostgreSQL
+  ✓ Definición de tablas y columnas
+  ✓ Índices optimizados para consultas
+  ✓ Restricciones de integridad
+  ✓ Relaciones entre entidades
+  ✓ Triggers y funciones PostgreSQL
 
-¿Por qué dos archivos separados?
-- Separación de responsabilidades
-- La API puede tener campos diferentes a la base de datos
-- Flexibilidad para cambios independientes
-- Mejor organización del código
+🔄 FLUJO DE DATOS:
+  API Request → Pydantic (validación) → SQLAlchemy (persistencia) → PostgreSQL
+  PostgreSQL → SQLAlchemy (consulta) → Pydantic (serialización) → API Response
 
-Analogia:
-- Pydantic = El formulario que llena el usuario
-- SQLAlchemy = La tabla donde se guardan los datos
+💡 VENTAJAS DE ESTA SEPARACIÓN:
+  - Separación clara de responsabilidades
+  - Flexibilidad para cambios independientes
+  - Mejor testabilidad y mantenimiento
+  - Optimización específica por capa
+  - Reutilización de modelos en diferentes contextos
+
+🚀 OPTIMIZACIONES POSTGRESQL:
+  - Índices estratégicos para consultas frecuentes
+  - Tipos de datos nativos de PostgreSQL
+  - Restricciones de integridad referencial
+  - Funciones de fecha/hora del servidor
+  - Comentarios en columnas para documentación
 """
 
-from sqlalchemy import Column, Integer, String, Text, DateTime, Enum as SQLEnum
+from sqlalchemy import Column, Integer, String, Text, DateTime, Enum as SQLEnum, Index
 from sqlalchemy.sql import func
 from datetime import datetime
+from typing import Dict, Any, Optional
 
-# Importar la configuración de base de datos
+# Importar la configuración de base de datos PostgreSQL
 from database import Base
 from enums import TipoCaso, EstadoCaso
 
 # ============================================================================
-# MODELO DE TABLA: CASOS
+# MODELO DE TABLA POSTGRESQL: CASOS PQRSD
 # ============================================================================
 
 class Caso(Base):
     """
-    Modelo de base de datos para la tabla 'casos'.
+    Modelo de base de datos PostgreSQL para la tabla 'casos'.
     
-    Esta clase define cómo se estructura la tabla en la base de datos.
-    Cada atributo representa una columna en la tabla.
+    Esta clase define la estructura de la tabla principal del sistema PQRSD,
+    optimizada para PostgreSQL con índices estratégicos y restricciones de integridad.
     
-    ¿Qué significa cada parte?
+    🏗️ CARACTERÍSTICAS POSTGRESQL:
+    ✓ Índices compuestos para consultas frecuentes
+    ✓ Enums nativos de PostgreSQL para tipos y estados
+    ✓ Funciones de fecha/hora del servidor (func.now())
+    ✓ Comentarios en columnas para documentación
+    ✓ Restricciones de integridad y unicidad
+    
+    📊 ÍNDICES OPTIMIZADOS:
+    - Primary key: id (automático)
+    - Unique: numero_caso (búsquedas por número)
+    - Index: tipo (filtros por tipo de caso)
+    - Index: estado (filtros por estado)
+    - Index: email_solicitante (búsquedas por solicitante)
+    - Composite: (tipo, estado) para consultas combinadas
+    - Composite: (fecha_creacion, estado) para reportes temporales
+    
+    🔄 FLUJO DE ESTADOS:
+    RECIBIDO → EN_PROCESO → RESUELTO/CERRADO
+    
+    📋 CAMPOS OBLIGATORIOS vs OPCIONALES:
+    ✓ Obligatorios: numero_caso, tipo, asunto, descripcion, nombre_solicitante, email_solicitante, estado
+    ⚪ Opcionales: telefono_solicitante, respuesta
+    🤖 Automáticos: id, fecha_creacion, fecha_actualizacion
     
     - __tablename__: Nombre de la tabla en la base de datos
     - Column: Define una columna en la tabla
@@ -169,56 +204,120 @@ class Caso(Base):
     )
     
     # ========================================================================
-    # MÉTODOS DE LA CLASE
+    # ÍNDICES COMPUESTOS OPTIMIZADOS PARA POSTGRESQL
     # ========================================================================
     
-    def __repr__(self):
-        """
-        Representación en string del objeto para debugging.
+    # Estos índices mejoran significativamente el rendimiento de consultas frecuentes
+    __table_args__ = (
+        # Índice compuesto para consultas por tipo y estado (muy común en dashboards)
+        Index('idx_caso_tipo_estado', 'tipo', 'estado'),
         
-        Esto es lo que verás cuando imprimas un objeto Caso:
-        print(caso) -> <Caso(id=1, numero='CASO-2024-001', tipo='peticion')>
-        """
-        return f"<Caso(id={self.id}, numero='{self.numero_caso}', tipo='{self.tipo}')>"
+        # Índice compuesto para reportes temporales por fecha y estado
+        Index('idx_caso_fecha_estado', 'fecha_creacion', 'estado'),
+        
+        # Índice compuesto para búsquedas por solicitante y estado
+        Index('idx_caso_email_estado', 'email_solicitante', 'estado'),
+        
+        # Índice para consultas de casos recientes (ordenamiento por fecha)
+        Index('idx_caso_fecha_desc', 'fecha_creacion'),
+        
+        # Comentario de la tabla para documentación en PostgreSQL
+        {'comment': 'Tabla principal para almacenar casos PQRSD del sistema ESO. '
+                   'Optimizada para PostgreSQL con índices estratégicos para consultas frecuentes.'}
+    )
     
-    def to_dict(self):
+    # ========================================================================
+    # MÉTODOS DE INSTANCIA Y UTILIDADES
+    # ========================================================================
+    
+    def __repr__(self) -> str:
         """
-        Convierte el objeto SQLAlchemy a un diccionario.
+        Representación legible del objeto Caso para debugging y logs.
         
-        Esto es útil para:
-        - Convertir a JSON
-        - Pasar datos a los modelos Pydantic
-        - Debugging y logging
+        🔍 UTILIDAD:
+        - Debugging en desarrollo
+        - Logs de aplicación
+        - Inspección en consola interactiva
         
         Returns:
-            dict: Diccionario con todos los campos del caso
+            str: Representación compacta con información clave del caso
+        
+        Example:
+            >>> caso = Caso(id=1, numero_caso='ESO-2024-001', tipo=TipoCaso.PETICION)
+            >>> print(caso)
+            <Caso(id=1, numero='ESO-2024-001', tipo='PETICION', estado='RECIBIDO')>
+        """
+        return f"<Caso(id={self.id}, numero='{self.numero_caso}', tipo='{self.tipo}', estado='{self.estado}')>"
+    
+    def to_dict(self) -> Dict[str, Any]:
+        """
+        Convierte la instancia de Caso a diccionario Python.
+        
+        🚀 OPTIMIZADO PARA POSTGRESQL:
+        - Manejo seguro de enums (convierte a .value)
+        - Serialización ISO de fechas para compatibilidad JSON
+        - Manejo de valores None para campos opcionales
+        - Formato estándar para APIs REST
+        
+        Returns:
+            Dict[str, Any]: Diccionario con todos los campos del caso
+        
+        Example:
+            >>> caso.to_dict()
+            {
+                'id': 1,
+                'numero_caso': 'ESO-2024-001',
+                'tipo': 'PETICION',
+                'estado': 'RECIBIDO',
+                'fecha_creacion': '2024-01-15T10:30:00',
+                ...
+            }
         """
         return {
-            "id": self.id,
-            "numero_caso": self.numero_caso,
-            "tipo": self.tipo,
-            "asunto": self.asunto,
-            "descripcion": self.descripcion,
-            "nombre_solicitante": self.nombre_solicitante,
-            "email_solicitante": self.email_solicitante,
-            "telefono_solicitante": self.telefono_solicitante,
-            "estado": self.estado,
-            "respuesta": self.respuesta,
-            "fecha_creacion": self.fecha_creacion,
-            "fecha_actualizacion": self.fecha_actualizacion
+            'id': self.id,
+            'numero_caso': self.numero_caso,
+            'tipo': self.tipo.value if self.tipo else None,
+            'asunto': self.asunto,
+            'descripcion': self.descripcion,
+            'nombre_solicitante': self.nombre_solicitante,
+            'email_solicitante': self.email_solicitante,
+            'telefono_solicitante': self.telefono_solicitante,
+            'estado': self.estado.value if self.estado else None,
+            'respuesta': self.respuesta,
+            'fecha_creacion': self.fecha_creacion.isoformat() if self.fecha_creacion else None,
+            'fecha_actualizacion': self.fecha_actualizacion.isoformat() if self.fecha_actualizacion else None
         }
     
     @classmethod
-    def from_pydantic(cls, caso_data, numero_caso: str):
+    def from_pydantic(cls, caso_data, numero_caso: str) -> 'Caso':
         """
-        Crea un objeto Caso desde un modelo Pydantic CasoCreate.
+        Factory method para crear instancia de Caso desde objeto Pydantic.
+        
+        🔄 FLUJO DE CONVERSIÓN:
+        Pydantic Model (validación) → SQLAlchemy Model (persistencia)
+        
+        ⚡ CARACTERÍSTICAS:
+        - Mapeo automático de campos
+        - Manejo seguro de campos opcionales
+        - Preservación de tipos enum
+        - Estado inicial automático (RECIBIDO)
         
         Args:
-            caso_data: Objeto CasoCreate de Pydantic
+            caso_data: Objeto CasoCreate de Pydantic con datos validados
             numero_caso: Número único generado para el caso
             
         Returns:
-            Caso: Nueva instancia de Caso para guardar en la base de datos
+            Caso: Nueva instancia lista para persistir en PostgreSQL
+        
+        Example:
+            >>> from pydantic_models import CasoCreate
+            >>> pydantic_caso = CasoCreate(tipo='PETICION', asunto='...', ...)
+            >>> db_caso = Caso.from_pydantic(pydantic_caso, 'ESO-2024-001')
+            >>> session.add(db_caso)
+        
+        Note:
+            Los campos fecha_creacion y fecha_actualizacion se generan automáticamente
+            por PostgreSQL usando func.now(), no necesitan ser especificados.
         """
         return cls(
             numero_caso=numero_caso,

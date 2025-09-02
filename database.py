@@ -1,53 +1,79 @@
 # -*- coding: utf-8 -*-
 """
-Configuración de Base de Datos para el Sistema PQRSD
+Configuración de Base de Datos PostgreSQL para el Sistema PQRSD
 
-Este archivo configura la conexión a la base de datos usando SQLAlchemy.
+Este archivo configura la conexión a PostgreSQL usando SQLAlchemy con variables de entorno
+para mayor seguridad y flexibilidad en diferentes entornos (desarrollo, testing, producción).
 
 ¿Qué hace este archivo?
-1. Configura la conexión a la base de datos (SQLite en este caso)
-2. Crea el "motor" de base de datos (engine)
+1. Carga configuración de PostgreSQL desde variables de entorno
+2. Crea el "motor" de base de datos (engine) con pool de conexiones
 3. Configura las sesiones para interactuar con la base de datos
-4. Proporciona funciones para obtener conexiones a la base de datos
+4. Proporciona funciones seguras para obtener conexiones a la base de datos
+5. Incluye validación de configuración y manejo de errores
 
 ¿Qué es cada componente?
 
-- ENGINE: Es como el "motor" que maneja la conexión a la base de datos
-- SESSION: Es como una "conversación" con la base de datos donde puedes hacer consultas
-- BASE: Es la clase base de la que heredan todos los modelos de tablas
+- ENGINE: Motor que maneja el pool de conexiones a PostgreSQL
+- SESSION: Sesión transaccional para operaciones con la base de datos
+- BASE: Clase base declarativa para todos los modelos ORM
 
-Analogia:
-- Engine = El motor de un carro
-- Session = Un viaje específico que haces con el carro
-- Base = El plano/diseño base para construir todos los carros
+Ventajas de PostgreSQL sobre SQLite:
+- Soporte para múltiples usuarios concurrentes
+- Transacciones ACID completas
+- Tipos de datos avanzados (JSON, Arrays, etc.)
+- Mejor rendimiento en aplicaciones de producción
+- Funciones y procedimientos almacenados
+- Replicación y alta disponibilidad
 """
 
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, text
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
+from sqlalchemy.pool import QueuePool
 import os
+from dotenv import load_dotenv
+import logging
+from typing import Generator
 
 # ============================================================================
-# CONFIGURACIÓN DE LA BASE DE DATOS
+# CONFIGURACIÓN DE LA BASE DE DATOS POSTGRESQL
 # ============================================================================
 
-# Nombre del archivo de base de datos SQLite
-# SQLite guarda toda la base de datos en un solo archivo
-DATABASE_FILE = "pqrsd_sistema.db"
+# Cargar variables de entorno desde archivo .env (si existe)
+load_dotenv()
 
-# URL de conexión a la base de datos
-# Para SQLite, la URL tiene el formato: sqlite:///ruta_al_archivo.db
-# Los tres /// indican que es un archivo local
-DATABASE_URL = f"sqlite:///{DATABASE_FILE}"
+# Configurar logging para debugging de base de datos
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
-# Crear el "motor" de la base de datos
-# El motor es responsable de manejar las conexiones
-# connect_args={"check_same_thread": False} es específico para SQLite
-# y permite usar la base de datos desde múltiples hilos (threads)
+# Variables de entorno para configuración de PostgreSQL
+# Estas deben estar definidas en el archivo .env o en el sistema
+DB_HOST = os.getenv("DB_HOST", "localhost")
+DB_PORT = os.getenv("DB_PORT", "5432")
+DB_NAME = os.getenv("DB_NAME", "pqrsd_sistema")
+DB_USER = os.getenv("DB_USER", "postgres")
+DB_PASSWORD = os.getenv("DB_PASSWORD", "")
+
+# Validar que las variables críticas estén configuradas
+if not DB_PASSWORD:
+    logger.warning("⚠️  DB_PASSWORD no está configurada. Usando valor por defecto (no recomendado para producción)")
+    DB_PASSWORD = "postgres"
+
+# Construir URL de conexión a PostgreSQL
+# Formato: postgresql://usuario:contraseña@host:puerto/nombre_base_datos
+DATABASE_URL = f"postgresql://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
+
+# Configuración del motor de base de datos con pool de conexiones
+# Pool de conexiones mejora el rendimiento reutilizando conexiones
 engine = create_engine(
     DATABASE_URL,
-    connect_args={"check_same_thread": False},  # Solo necesario para SQLite
-    echo=False  # Cambia a True si quieres ver las consultas SQL en la consola
+    poolclass=QueuePool,          # Tipo de pool de conexiones
+    pool_size=10,                 # Número de conexiones permanentes en el pool
+    max_overflow=20,              # Conexiones adicionales permitidas
+    pool_pre_ping=True,           # Verificar conexiones antes de usarlas
+    pool_recycle=3600,            # Reciclar conexiones cada hora
+    echo=os.getenv("DB_ECHO", "false").lower() == "true"  # Mostrar SQL en consola
 )
 
 # Crear una "fábrica" de sesiones
@@ -68,101 +94,248 @@ Base = declarative_base()
 # FUNCIONES AUXILIARES
 # ============================================================================
 
-def get_database_session():
+def get_database_session() -> Generator:
     """
-    Obtiene una nueva sesión de base de datos.
+    Generador de sesiones de base de datos PostgreSQL con manejo automático de recursos.
+    
+    Esta función es un generador que:
+    1. Crea una nueva sesión de base de datos
+    2. La entrega para su uso (yield)
+    3. Automáticamente la cierra al finalizar
+    4. Maneja errores y rollbacks automáticamente
+    
+    Uso típico en FastAPI:
+    ```python
+    def get_casos(db: Session = Depends(get_db)):
+        return db.query(Caso).all()
+    ```
+    
+    Yields:
+        Session: Sesión de SQLAlchemy lista para usar
+        
+    Raises:
+        SQLAlchemyError: Si hay problemas de conexión o transacción
+    """
+    db = SessionLocal()
+    try:
+        yield db
+        # Si llegamos aquí, todo salió bien, hacer commit
+        db.commit()
+    except Exception as e:
+        # Si hay error, hacer rollback para mantener consistencia
+        db.rollback()
+        logger.error(f"Error en sesión de base de datos: {e}")
+        raise
+    finally:
+        # Siempre cerrar la sesión para liberar la conexión
+        db.close()
+
+
+# Alias para compatibilidad con FastAPI Depends
+get_db = get_database_session
+
+
+def get_database_session_old() -> Generator:
+    """
+    Obtiene una nueva sesión de base de datos PostgreSQL con manejo seguro de conexiones.
     
     ¿Qué es una sesión?
-    Una sesión es como abrir un "canal de comunicación" con la base de datos.
+    Una sesión es como abrir un "canal de comunicación" transaccional con PostgreSQL.
     A través de la sesión puedes:
-    - Hacer consultas (SELECT)
-    - Insertar datos (INSERT)
-    - Actualizar datos (UPDATE)
-    - Eliminar datos (DELETE)
+    - Hacer consultas (SELECT) con aislamiento transaccional
+    - Insertar datos (INSERT) con validación de integridad
+    - Actualizar datos (UPDATE) con bloqueos optimistas
+    - Eliminar datos (DELETE) con verificación de restricciones
     
     ¿Por qué usar yield en lugar de return?
     yield convierte esta función en un "generador", lo que permite:
-    - Abrir la sesión
+    - Abrir la sesión y iniciar una transacción
     - Entregar la sesión para que la uses
-    - Automáticamente cerrar la sesión cuando termines
+    - Automáticamente hacer commit/rollback según el resultado
+    - Cerrar la sesión y liberar la conexión al pool
     
-    Esto garantiza que las conexiones se cierren correctamente.
+    Ventajas del patrón generador:
+    - Garantiza liberación de recursos
+    - Manejo automático de transacciones
+    - Previene memory leaks
+    - Integración con context managers
     
     Uso típico:
     ```python
     with get_database_session() as db:
-        # Usar la base de datos
-        casos = db.query(Caso).all()
-    # La sesión se cierra automáticamente aquí
+        # Operaciones con la base de datos
+        # Commit automático si no hay errores
     ```
+    
+    Returns:
+        Generator: Generador que produce una sesión de SQLAlchemy
+    
+    Raises:
+        SQLAlchemyError: Si hay problemas de conexión o transacción
     """
     db = SessionLocal()
     try:
         yield db  # Entrega la sesión para usar
+    except Exception as e:
+        # En caso de error, hacer rollback de la transacción
+        db.rollback()
+        logger.error(f"Error en sesión de base de datos: {e}")
+        raise
     finally:
-        db.close()  # Siempre cierra la sesión, incluso si hay errores
+        # Siempre cerrar la sesión para liberar la conexión
+        db.close()
 
 def create_tables():
     """
-    Crea todas las tablas en la base de datos.
+    Crea todas las tablas en la base de datos PostgreSQL.
     
-    Esta función debe llamarse una vez para crear la estructura
-    de la base de datos (las tablas) basada en los modelos definidos.
+    ¿Qué hace esta función?
+    1. Conecta a PostgreSQL usando las credenciales configuradas
+    2. Toma todos los modelos que heredan de Base (ORM models)
+    3. Genera y ejecuta comandos CREATE TABLE en PostgreSQL
+    4. Crea índices, restricciones y relaciones definidas en los modelos
+    5. Si las tablas ya existen, las omite (idempotente)
     
-    ¿Cuándo usar esta función?
-    - La primera vez que ejecutas la aplicación
-    - Cuando agregas nuevos modelos/tablas
-    - Para resetear la base de datos en desarrollo
+    Ventajas de PostgreSQL:
+    - Soporte para tipos de datos avanzados (JSONB, Arrays, UUID)
+    - Restricciones de integridad referencial robustas
+    - Índices parciales y funcionales
+    - Secuencias automáticas para claves primarias
     
-    Nota: En producción, es mejor usar migraciones (Alembic)
-    para cambios más controlados.
+    Ejemplo:
+    Si tienes un modelo llamado "Caso", esta función creará:
+    - Tabla "casos" con todas las columnas definidas
+    - Secuencia para el ID autoincremental
+    - Índices en campos marcados como index=True
+    - Restricciones de clave foránea
+    
+    Raises:
+        SQLAlchemyError: Si hay problemas de conexión o permisos
     """
-    # Importar todos los modelos aquí para que SQLAlchemy los conozca
-    # Esto es necesario para que create_all() sepa qué tablas crear
-    from db_models import Caso  # Importamos después para evitar imports circulares
-    
-    # Crear todas las tablas definidas en los modelos
-    Base.metadata.create_all(bind=engine)
-    print(f"✅ Tablas creadas exitosamente en: {DATABASE_FILE}")
+    try:
+        # Importar todos los modelos aquí para que SQLAlchemy los conozca
+        # Esto es necesario para que create_all() sepa qué tablas crear
+        from db_models import Caso  # Importamos después para evitar imports circulares
+        
+        logger.info("🏗️  Creando tablas en PostgreSQL...")
+        # Crear todas las tablas definidas en los modelos
+        Base.metadata.create_all(bind=engine)
+        logger.info(f"✅ Tablas creadas exitosamente en PostgreSQL: {DB_NAME}")
+    except Exception as e:
+        logger.error(f"❌ Error creando tablas: {e}")
+        raise
 
 def drop_tables():
     """
-    Elimina todas las tablas de la base de datos.
+    Elimina todas las tablas de la base de datos PostgreSQL.
     
-    ⚠️ CUIDADO: Esta función elimina TODOS los datos.
+    ⚠️ CUIDADO: Esta función elimina TODOS los datos y estructura.
+    
+    ¿Qué hace exactamente?
+    1. Conecta a PostgreSQL
+    2. Ejecuta DROP TABLE CASCADE para cada tabla
+    3. Elimina secuencias, índices y restricciones asociadas
+    4. Libera el espacio ocupado en el servidor
+    
     Solo usar en desarrollo para resetear la base de datos.
-    
     NUNCA usar en producción a menos que sepas exactamente lo que haces.
+    
+    En PostgreSQL, esta operación:
+    - Es transaccional (se puede hacer rollback)
+    - Respeta restricciones de clave foránea
+    - Elimina automáticamente índices y secuencias
+    
+    Raises:
+        SQLAlchemyError: Si hay problemas de conexión o permisos
     """
-    Base.metadata.drop_all(bind=engine)
-    print("⚠️ Todas las tablas han sido eliminadas")
+    try:
+        logger.warning("⚠️ Eliminando todas las tablas de PostgreSQL...")
+        Base.metadata.drop_all(bind=engine)
+        logger.warning("⚠️ Todas las tablas han sido eliminadas de PostgreSQL")
+    except Exception as e:
+        logger.error(f"❌ Error eliminando tablas: {e}")
+        raise
 
 def database_exists() -> bool:
     """
-    Verifica si el archivo de base de datos existe.
+    Verifica si la base de datos PostgreSQL existe y es accesible.
+    
+    A diferencia de SQLite (que es un archivo), PostgreSQL es un servidor
+    de base de datos, por lo que verificamos:
+    1. Conectividad al servidor PostgreSQL
+    2. Existencia de la base de datos específica
+    3. Permisos de acceso
     
     Returns:
-        bool: True si la base de datos existe, False si no.
+        bool: True si la base de datos existe y es accesible, False si no.
     """
-    return os.path.exists(DATABASE_FILE)
+    try:
+        # Intentar conectar y hacer una consulta simple
+        with engine.connect() as connection:
+            # Verificar que podemos ejecutar una consulta básica
+            result = connection.execute(text("SELECT 1"))
+            return result.fetchone() is not None
+    except Exception as e:
+        logger.error(f"No se puede conectar a la base de datos PostgreSQL: {e}")
+        return False
 
 def get_database_info() -> dict:
     """
-    Obtiene información sobre la base de datos.
+    Obtiene información detallada sobre la base de datos PostgreSQL.
+    
+    Recopila información del servidor PostgreSQL incluyendo:
+    - Configuración de conexión
+    - Estado de conectividad
+    - Versión del servidor
+    - Tamaño de la base de datos
+    - Número de tablas
     
     Returns:
-        dict: Información sobre la base de datos (archivo, tamaño, etc.)
+        dict: Información completa sobre la base de datos PostgreSQL
     """
     info = {
-        "database_file": DATABASE_FILE,
-        "database_url": DATABASE_URL,
+        "database_name": DB_NAME,
+        "database_host": DB_HOST,
+        "database_port": DB_PORT,
+        "database_user": DB_USER,
+        "database_url": DATABASE_URL.replace(DB_PASSWORD, "***"),  # Ocultar contraseña
         "exists": database_exists(),
-        "size_bytes": 0
+        "server_version": None,
+        "database_size_mb": 0,
+        "table_count": 0,
+        "connection_pool_size": engine.pool.size(),
+        "connection_pool_overflow": engine.pool.overflow()
     }
     
     if info["exists"]:
-        info["size_bytes"] = os.path.getsize(DATABASE_FILE)
-        info["size_mb"] = round(info["size_bytes"] / (1024 * 1024), 2)
+        try:
+            with engine.connect() as connection:
+                # Obtener versión del servidor PostgreSQL
+                version_result = connection.execute(text("SELECT version()"))
+                info["server_version"] = version_result.fetchone()[0]
+                
+                # Obtener tamaño de la base de datos
+                size_query = text(
+                    "SELECT pg_size_pretty(pg_database_size(:db_name)) as size, "
+                    "pg_database_size(:db_name) as size_bytes"
+                )
+                size_result = connection.execute(size_query, {"db_name": DB_NAME})
+                size_row = size_result.fetchone()
+                if size_row:
+                    info["database_size_pretty"] = size_row[0]
+                    info["database_size_mb"] = round(size_row[1] / (1024 * 1024), 2)
+                
+                # Contar número de tablas
+                table_query = text(
+                    "SELECT COUNT(*) FROM information_schema.tables "
+                    "WHERE table_schema = 'public'"
+                )
+                table_result = connection.execute(table_query)
+                info["table_count"] = table_result.fetchone()[0]
+                
+        except Exception as e:
+            logger.error(f"Error obteniendo información de la base de datos: {e}")
+            info["error"] = str(e)
     
     return info
 
@@ -174,15 +347,33 @@ if __name__ == "__main__":
     # Este código solo se ejecuta si ejecutas este archivo directamente
     # python database.py
     
-    print("🔧 Configuración de Base de Datos")
-    print(f"📁 Archivo: {DATABASE_FILE}")
-    print(f"🔗 URL: {DATABASE_URL}")
-    print(f"📊 Info: {get_database_info()}")
+    print("🔧 Configuración de Base de Datos PostgreSQL")
+    print(f"🏢 Servidor: {DB_HOST}:{DB_PORT}")
+    print(f"🗄️ Base de datos: {DB_NAME}")
+    print(f"👤 Usuario: {DB_USER}")
+    print(f"🔗 URL: {DATABASE_URL.replace(DB_PASSWORD, '***')}")
+    
+    # Información detallada de la base de datos
+    print("\n📊 Información de la base de datos:")
+    db_info = get_database_info()
+    for key, value in db_info.items():
+        print(f"   {key}: {value}")
     
     # Ejemplo de cómo usar la sesión
-    print("\n🧪 Probando conexión...")
+    print("\n🧪 Probando conexión a PostgreSQL...")
     try:
         with next(get_database_session()) as db:
-            print("✅ Conexión exitosa a la base de datos")
+            print("✅ Conexión exitosa a PostgreSQL")
+            # Probar una consulta simple
+            result = db.execute(text("SELECT current_database(), current_user, version()"))
+            row = result.fetchone()
+            print(f"   📋 Base de datos actual: {row[0]}")
+            print(f"   👤 Usuario actual: {row[1]}")
+            print(f"   🔧 Versión: {row[2][:50]}...")
     except Exception as e:
-        print(f"❌ Error de conexión: {e}")
+        print(f"❌ Error de conexión a PostgreSQL: {e}")
+        print("\n💡 Posibles soluciones:")
+        print("   1. Verificar que PostgreSQL esté ejecutándose")
+        print("   2. Verificar credenciales en el archivo .env")
+        print("   3. Verificar que la base de datos exista")
+        print("   4. Verificar permisos del usuario")

@@ -1,25 +1,50 @@
-# routes.py - Rutas y endpoints del Sistema PQRSD
+# routes.py - API REST del Sistema PQRSD con PostgreSQL
 """
-Este archivo define todas las rutas (endpoints) de la API REST del Sistema PQRSD.
+🛣️ Definición de Endpoints REST para el Sistema PQRSD
 
-¿Qué es una API REST?
-Una API REST es una forma de comunicación entre aplicaciones usando HTTP.
-Cada endpoint es una URL específica que acepta ciertos tipos de peticiones (GET, POST, PUT, etc.)
-y devuelve datos en formato JSON.
+Este archivo contiene todos los endpoints de la API REST, optimizados para
+funcionar con PostgreSQL y proporcionar una interfaz robusta y escalable.
 
-¿Qué es un Router?
-Un Router en FastAPI es como un organizador de rutas. Agrupa endpoints relacionados
-y permite modularizar la aplicación. En lugar de tener todas las rutas en main.py,
-las organizamos aquí y luego las incluimos en la aplicación principal.
+🚀 CARACTERÍSTICAS DE LA API:
+✓ Endpoints RESTful estándar
+✓ Validación automática con Pydantic
+✓ Documentación automática (Swagger)
+✓ Manejo de errores HTTP estándar
+✓ Filtros avanzados en consultas
+✓ Respuestas consistentes en JSON
+✓ Operaciones CRUD completas
 
-Estructura de endpoints en este sistema:
-- GET /: Página de bienvenida
-- POST /casos/: Crear un nuevo caso
-- GET /casos/: Listar todos los casos (con filtros opcionales)
-- GET /casos/{caso_id}: Obtener un caso específico por su ID
-- GET /casos/numero/{numero_caso}: Obtener un caso por su número público
-- PUT /casos/{caso_id}: Actualizar un caso existente
-- GET /estadisticas/: Obtener estadísticas del sistema
+📊 ENDPOINTS DISPONIBLES:
+
+🏠 INFORMACIÓN GENERAL:
+- GET /                     → Información del sistema
+- GET /estadisticas/        → Métricas y estadísticas
+
+📋 GESTIÓN DE CASOS:
+- POST /casos/              → Crear nuevo caso
+- GET /casos/               → Listar casos (con filtros)
+- GET /casos/{caso_id}      → Obtener caso por ID interno
+- GET /casos/numero/{num}   → Obtener caso por número público
+- PUT /casos/{caso_id}      → Actualizar caso existente
+
+🔍 FILTROS DISPONIBLES:
+- ?tipo=PETICION|QUEJA|RECLAMO|SUGERENCIA|DENUNCIA
+- ?estado=RECIBIDO|EN_PROCESO|RESUELTO|CERRADO
+
+📈 OPTIMIZACIONES POSTGRESQL:
+- Consultas con índices optimizados
+- Transacciones ACID automáticas
+- Pool de conexiones para concurrencia
+- Agregaciones eficientes para estadísticas
+- Búsquedas rápidas por número de caso
+
+🔒 CÓDIGOS DE RESPUESTA HTTP:
+- 200: Operación exitosa
+- 201: Recurso creado
+- 400: Datos inválidos
+- 404: Recurso no encontrado
+- 422: Error de validación
+- 500: Error interno del servidor
 """
 
 from fastapi import APIRouter
