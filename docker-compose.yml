@@ -1,0 +1,80 @@
+# 🐳 Docker Compose para Sistema PQRSD
+# Configuración profesional para desarrollo y producción
+
+version: '3.8'
+
+services:
+  # 🐘 Base de datos PostgreSQL
+  postgres:
+    image: postgres:15-alpine
+    container_name: pqrsd-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: pqrsd_sistema
+      POSTGRES_USER: pqrsd_user
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-desarrollo123}
+      PGDATA: /var/lib/postgresql/data/pgdata
+    ports:
+      - "5432:5432"
+    volumes:
+      # Persistencia de datos
+      - postgres_data:/var/lib/postgresql/data
+      # Scripts de inicialización (opcional)
+      - ./scripts/init-db.sql:/docker-entrypoint-initdb.d/init-db.sql:ro
+    networks:
+      - pqrsd-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U pqrsd_user -d pqrsd_sistema"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+
+  # 📊 Adminer - Interfaz web para PostgreSQL (solo desarrollo)
+  adminer:
+    image: adminer:4.8.1
+    container_name: pqrsd-adminer
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    networks:
+      - pqrsd-network
+    depends_on:
+      - postgres
+    profiles:
+      - dev  # Solo se ejecuta con --profile dev
+
+  # 🚀 Aplicación FastAPI (opcional - para contenedorización completa)
+  # app:
+  #   build:
+  #     context: .
+  #     dockerfile: Dockerfile
+  #   container_name: pqrsd-app
+  #   restart: unless-stopped
+  #   ports:
+  #     - "8000:8000"
+  #   environment:
+  #     DB_HOST: postgres
+  #     DB_PORT: 5432
+  #     DB_NAME: pqrsd_sistema
+  #     DB_USER: pqrsd_user
+  #     DB_PASSWORD: ${DB_PASSWORD:-desarrollo123}
+  #   depends_on:
+  #     postgres:
+  #       condition: service_healthy
+  #   networks:
+  #     - pqrsd-network
+  #   volumes:
+  #     - ./logs:/app/logs
+
+# 🌐 Red personalizada
+networks:
+  pqrsd-network:
+    driver: bridge
+    name: pqrsd-network
+
+# 💾 Volúmenes persistentes
+volumes:
+  postgres_data:
+    driver: local
+    name: pqrsd-postgres-data

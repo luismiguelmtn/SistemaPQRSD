@@ -1,52 +1,60 @@
-# 🚀 Sistema PQRSD - Producción
+# 🚀 Sistema PQRSD - ESO Rionegro
 
-Sistema de Peticiones, Quejas, Reclamos, Sugerencias y Denuncias desarrollado con **FastAPI** y **PostgreSQL** para entornos de producción.
+Sistema de **Peticiones, Quejas, Reclamos, Sugerencias y Denuncias** desarrollado con **FastAPI** y **PostgreSQL** para la Empresa de Seguridad del Oriente ESO Rionegro SAS.
 
 ## 📋 Descripción
 
 Sistema robusto y escalable para gestionar casos PQRSD con:
-- ✅ **API REST completa** con FastAPI
-- ✅ **Base de datos PostgreSQL** para producción
-- ✅ **Validaciones automáticas** con Pydantic
-- ✅ **Documentación interactiva** con Swagger
-- ✅ **Arquitectura escalable** y mantenible
+- ✅ **API REST completa** con FastAPI y documentación automática
+- ✅ **Base de datos PostgreSQL** con Docker para desarrollo y producción
+- ✅ **Validaciones automáticas** con Pydantic y SQLAlchemy
+- ✅ **Documentación interactiva** con Swagger UI y ReDoc
+- ✅ **Arquitectura escalable** y mantenible con separación de responsabilidades
+- ✅ **Contenedores Docker** para fácil despliegue
+- ✅ **Scripts de inicialización** automatizados
 
 ## 🏗️ Estructura del Proyecto
 
 ```
 pqrsd-eso/
 ├── main.py              # Configuración principal de FastAPI
-├── routes.py            # Endpoints de la API
+├── routes.py            # Endpoints de la API REST
 ├── services.py          # Lógica de negocio y servicios
 ├── models.py            # Modelos Pydantic para validación
 ├── db_models.py         # Modelos SQLAlchemy para PostgreSQL
-├── database.py          # Configuración de base de datos
+├── database.py          # Configuración de conexión PostgreSQL
 ├── enums.py             # Enumeraciones (TipoCaso, EstadoCaso)
 ├── init_db.py           # Script de inicialización de BD
-├── setup_produccion.py  # Script de configuración automática
+├── docker-compose.yml   # Configuración de Docker para PostgreSQL
 ├── .env                 # Variables de entorno (NO incluir en git)
+├── .env.docker          # Variables para Docker
 ├── requirements.txt     # Dependencias del proyecto
-├── GUIAS/              # Documentación técnica
-│   ├── GUIA_MIGRACION_POSTGRESQL.md
+├── GUIAS/              # Documentación técnica completa
+│   ├── GUIA_INSTALACION.md
 │   ├── GUIA_BASE_DE_DATOS.md
 │   ├── GUIA_ENDPOINTS.md
 │   └── EJEMPLO_FLUJO_DATOS.md
 └── README.md           # Este archivo
 ```
 
-## 🚀 Instalación para Producción
+## 🚀 Instalación y Configuración
 
 ### 📋 Prerrequisitos
 
 - **Python 3.8+**
-- **PostgreSQL 12+** instalado y corriendo
-- **pip** (gestor de paquetes de Python)
+- **Docker y Docker Compose** (recomendado)
+- **Git** para clonar el repositorio
 
-### 🔧 Configuración Rápida
+### 🐳 Instalación con Docker (Recomendado)
 
-1. **Preparar el entorno**
+1. **Clonar el repositorio**
    ```bash
+   git clone <url-del-repositorio>
    cd pqrsd-eso
+   ```
+
+2. **Crear entorno virtual**
+   ```bash
    python -m venv venv
    
    # Windows
@@ -54,60 +62,89 @@ pqrsd-eso/
    
    # Linux/macOS
    source venv/bin/activate
-   source venv/bin/activate
    ```
 
-2. **Instalar dependencias**
+3. **Instalar dependencias**
    ```bash
    pip install -r requirements.txt
    ```
 
-3. **Configurar PostgreSQL**
-   ```sql
-   -- Crear base de datos
-   CREATE DATABASE pqrsd_sistema;
-   
-   -- Crear usuario (opcional)
-   CREATE USER pqrsd_user WITH PASSWORD 'tu_contraseña_segura';
-   GRANT ALL PRIVILEGES ON DATABASE pqrsd_sistema TO pqrsd_user;
-   ```
-
 4. **Configurar variables de entorno**
    ```bash
-   # Editar archivo .env
-   DB_HOST=localhost
-   DB_PORT=5432
-   DB_NAME=pqrsd_sistema
-   DB_USER=tu_usuario_postgresql
-   DB_PASSWORD=tu_contraseña_postgresql
-   DB_ECHO=false
-   APP_NAME=Sistema PQRSD
-   APP_VERSION=1.0.0
-   APP_DEBUG=false
+   # Copiar archivo de ejemplo
+   cp .env.docker .env
+   
+   # Editar .env si es necesario
+   # Las configuraciones por defecto funcionan con Docker
    ```
 
-5. **Configuración automática**
+5. **Iniciar PostgreSQL con Docker**
    ```bash
-   python setup_produccion.py
+   docker compose up -d
    ```
 
-## 🌐 Despliegue en Producción
+6. **Inicializar la base de datos**
+   ```bash
+   # Crear tablas
+   python init_db.py
+   
+   # Crear tablas con datos de ejemplo
+   python init_db.py --examples
+   ```
 
-### 🚀 Iniciar el servidor
+### 🔧 Instalación Manual (Sin Docker)
+
+1. **Instalar PostgreSQL 12+** en tu sistema
+2. **Crear base de datos**
+   ```sql
+   CREATE DATABASE pqrsd_eso;
+   CREATE USER pqrsd_user WITH PASSWORD 'tu_contraseña';
+   GRANT ALL PRIVILEGES ON DATABASE pqrsd_eso TO pqrsd_user;
+   ```
+3. **Configurar .env** con tus credenciales
+4. **Seguir pasos 2-6** de la instalación con Docker
+
+## 🚀 Ejecutar el Sistema
+
+### 🌐 Iniciar el servidor
 
 ```bash
-# Desarrollo
-uvicorn main:app --host 0.0.0.0 --port 8000 --reload
+# Desarrollo (con recarga automática)
+python -m uvicorn main:app --reload --host 0.0.0.0 --port 8000
 
-# Producción
+# Producción (múltiples workers)
 uvicorn main:app --host 0.0.0.0 --port 8000 --workers 4
 ```
 
 ### 📚 Documentación de la API
 
-- **Swagger UI**: http://localhost:8000/docs
-- **ReDoc**: http://localhost:8000/redoc
-- **OpenAPI JSON**: http://localhost:8000/openapi.json
+Una vez iniciado el servidor, accede a:
+
+- **🎯 Swagger UI**: http://localhost:8000/docs
+- **📖 ReDoc**: http://localhost:8000/redoc
+- **📄 OpenAPI JSON**: http://localhost:8000/openapi.json
+
+### 🛠️ Comandos Útiles
+
+```bash
+# Verificar estado de la base de datos
+python init_db.py --info
+
+# Verificar conectividad
+python init_db.py --check
+
+# Resetear base de datos
+python init_db.py --reset
+
+# Resetear y cargar datos de ejemplo
+python init_db.py --reset --examples
+
+# Ver logs de Docker
+docker compose logs postgres
+
+# Parar PostgreSQL
+docker compose down
+```
 
 ## 🔗 Endpoints Principales
 
@@ -174,11 +211,13 @@ curl "http://localhost:8000/estadisticas/"
 
 ### 🔧 Tecnologías Utilizadas
 
-- **FastAPI**: Framework web moderno y rápido
-- **PostgreSQL**: Base de datos robusta para producción
-- **SQLAlchemy**: ORM para manejo de base de datos
-- **Pydantic**: Validación de datos automática
-- **Uvicorn**: Servidor ASGI de alto rendimiento
+- **🚀 FastAPI**: Framework web moderno y rápido para APIs
+- **🐘 PostgreSQL**: Base de datos robusta para producción
+- **🔗 SQLAlchemy**: ORM avanzado para manejo de base de datos
+- **✅ Pydantic**: Validación de datos automática y serialización
+- **⚡ Uvicorn**: Servidor ASGI de alto rendimiento
+- **🐳 Docker**: Contenedores para PostgreSQL
+- **📊 Enums**: Tipos de datos nativos de PostgreSQL
 
 ## 🔒 Configuración de Producción
 
@@ -234,53 +273,53 @@ sudo -u postgres psql -c "SELECT * FROM pg_stat_activity;"
 
 Consulta la carpeta `GUIAS/` para documentación detallada:
 
-- **GUIA_MIGRACION_POSTGRESQL.md**: Migración completa
-- **GUIA_BASE_DE_DATOS.md**: Estructura de BD
-- **GUIA_ENDPOINTS.md**: Documentación de API
-- **EJEMPLO_FLUJO_DATOS.md**: Flujo de datos
+- **📋 GUIA_INSTALACION.md**: Guía completa de instalación y configuración
+- **🗄️ GUIA_BASE_DE_DATOS.md**: Estructura y modelos de PostgreSQL
+- **🔗 GUIA_ENDPOINTS.md**: Documentación completa de la API
+- **📊 EJEMPLO_FLUJO_DATOS.md**: Flujo de datos y casos de uso
 
-## 🆘 Soporte
+## 🆘 Solución de Problemas
+
+### 🔍 Problemas Comunes
+
+**Error de conexión a PostgreSQL:**
+```bash
+# Verificar que Docker esté ejecutándose
+docker compose ps
+
+# Reiniciar PostgreSQL
+docker compose restart postgres
+
+# Verificar logs
+docker compose logs postgres
+```
+
+**Error "duplicate key value violates unique constraint":**
+- El número de caso ya existe
+- Usar un número diferente o verificar casos existentes
+- Ejecutar `python init_db.py --info` para ver casos
+
+**Puerto 8000 ocupado:**
+```bash
+# Usar otro puerto
+python -m uvicorn main:app --reload --port 8001
+```
+
+### 📞 Soporte
 
 Para problemas o consultas:
-1. Revisa los logs del servidor
-2. Verifica la conexión a PostgreSQL
-3. Consulta la documentación en `/docs`
-4. Revisa las guías técnicas
+1. 🔍 Revisa los logs del servidor y Docker
+2. 🔗 Verifica la conexión a PostgreSQL con `--check`
+3. 📖 Consulta la documentación en `/docs`
+4. 📚 Revisa las guías técnicas en `GUIAS/`
+
+## 🎯 Estados de Casos PQRSD
+
+- **📥 RECIBIDO**: Caso recién creado
+- **⏳ EN_PROCESO**: Caso en revisión
+- **✅ RESUELTO**: Caso con respuesta
+- **🔒 CERRADO**: Caso finalizado
 
 ---
 
-**🚀 Sistema PQRSD listo para producción con PostgreSQL** 🎉
-- **EN_PROCESO**: Caso en revisión
-- **RESUELTO**: Caso con respuesta
-- **CERRADO**: Caso finalizado
-
-## Desarrollo
-
-### Estructura de archivos
-
-- `main.py`: Punto de entrada de la aplicación
-- `routes.py`: Definición de rutas y endpoints
-- `services.py`: Lógica de negocio y operaciones de datos
-- `models.py`: Esquemas de datos con Pydantic
-- `enums.py`: Enumeraciones para tipos y estados
-
-### Desactivar entorno virtual
-
-Cuando termines de trabajar:
-
-```bash
-deactivate
-```
-
-## Notas
-
-- Este proyecto utiliza una "base de datos" en memoria para fines educativos
-- En producción, se recomienda usar una base de datos real (PostgreSQL, MySQL, etc.)
-- El entorno virtual (`venv/`) no debe incluirse en el control de versiones
-
-## Tecnologías utilizadas
-
-- **FastAPI**: Framework web moderno y rápido
-- **Pydantic**: Validación de datos y serialización
-- **Uvicorn**: Servidor ASGI de alto rendimiento
-- **Python 3.8+**: Lenguaje de programación
+**🚀 Sistema PQRSD ESO Rionegro - Listo para producción con PostgreSQL** 🎉
