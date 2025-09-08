@@ -28,17 +28,19 @@ python init_db.py
 Opciones avanzadas:
 ```bash
 python init_db.py --reset          # Elimina y recrea todas las tablas
-python init_db.py --sample-data    # Crea datos de ejemplo realistas
-python init_db.py --reset --sample-data  # Resetea completamente con datos
+python init_db.py --examples       # Crea datos de ejemplo realistas
+python init_db.py --reset --examples  # Resetea completamente con datos
 python init_db.py --check          # Solo verifica el estado de la BD
 python init_db.py --info           # Muestra información detallada
+python init_db.py --verbose        # Modo detallado con más información
 ```
 
 Requisitos previos:
-1. PostgreSQL debe estar ejecutándose
-2. La base de datos debe existir (createdb pqrsd_sistema)
-3. El usuario debe tener permisos CREATE/DROP
-4. Variables de entorno configuradas (.env)
+1. PostgreSQL debe estar ejecutándose (Docker: docker compose up)
+2. La base de datos debe existir (se crea automáticamente con Docker)
+3. El usuario debe tener permisos CREATE/DROP/INSERT
+4. Variables de entorno configuradas en archivo .env
+5. Entorno virtual activado con dependencias instaladas
 """
 
 import argparse
@@ -51,8 +53,6 @@ from typing import List, Dict, Any
 from database import (
     create_tables, 
     drop_tables, 
-    database_exists, 
-    get_database_info,
     get_database_session,
     engine
 )
