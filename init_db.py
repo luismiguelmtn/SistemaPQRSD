@@ -460,12 +460,12 @@ def main():
     Función principal que maneja los argumentos de línea de comandos para PostgreSQL.
     """
     parser = argparse.ArgumentParser(
-        description="Inicializador de Base de Datos PostgreSQL - Sistema PQRSD ESO",
+        description="Inicializador de Base de Datos PostgreSQL - Sistema PQRSD",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 🔧 PREREQUISITOS PARA POSTGRESQL:
   1. PostgreSQL instalado y ejecutándose
-  2. Base de datos creada (ej: pqrsd_eso)
+  2. Base de datos creada (ej: pqrsd)
   3. Usuario con permisos de escritura
   4. Archivo .env configurado con credenciales
 
@@ -522,7 +522,7 @@ def main():
         logging.getLogger().setLevel(logging.DEBUG)
         logger.debug("🔊 Modo verbose activado")
     
-    logger.info("🚀 INICIALIZADOR DE POSTGRESQL - Sistema PQRSD ESO")
+    logger.info("🚀 INICIALIZADOR DE POSTGRESQL - Sistema PQRSD")
     logger.info("=" * 70)
     
     # Variables para tracking de éxito

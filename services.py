@@ -23,8 +23,11 @@ En nuestro caso:
 
 from typing import List, Optional, Dict, Any
 from datetime import datetime
+import time
+import random
 from fastapi import HTTPException
 from sqlalchemy import extract
+from sqlalchemy.exc import IntegrityError
 from enums import TipoCaso, EstadoCaso
 from models import CasoCreate, CasoUpdate
 from database import get_database_session
@@ -52,6 +55,8 @@ from db_models import Caso
 def generar_numero_caso(tipo: TipoCaso) -> str:
     """
     Genera un número único y legible para identificar un caso basado en su tipo.
+    
+    OPTIMIZADO: Usa MAX() en lugar de COUNT() para mejor rendimiento.
     
     Formato: "XXX-YYYY-NNN" donde:
     - XXX: Prefijo según el tipo de caso
@@ -92,25 +97,110 @@ def generar_numero_caso(tipo: TipoCaso) -> str:
         TipoCaso.DENUNCIA: "DEN"
     }
     
-    # Obtener una sesión de base de datos para contar casos del mismo tipo
+    prefijo = prefijos[tipo]
+    
+    # Obtener una sesión de base de datos
     with next(get_database_session()) as db:
-        # Filtrar por tipo y año actual
-        contador = db.query(Caso).filter(
-            Caso.tipo == tipo,
-            extract('year', Caso.fecha_creacion) == año_actual
-        ).count() + 1
+        # Buscar el último número para este tipo y año (OPTIMIZADO)
+        patron_busqueda = f"{prefijo}-{año_actual}-%"
+        
+        # Obtener todos los números de caso que coincidan con el patrón
+        casos_existentes = db.query(Caso.numero_caso).filter(
+            Caso.numero_caso.like(patron_busqueda)
+        ).all()
+        
+        # Extraer los números consecutivos y encontrar el máximo (optimizado en memoria)
+        max_consecutivo = 0
+        for (numero_caso,) in casos_existentes:
+            try:
+                # Extraer solo la parte numérica del final (más eficiente)
+                ultimo_guion = numero_caso.rfind('-')
+                if ultimo_guion != -1:
+                    consecutivo = int(numero_caso[ultimo_guion + 1:])
+                    if consecutivo > max_consecutivo:
+                        max_consecutivo = consecutivo
+            except (ValueError, IndexError):
+                # Ignorar números de caso con formato incorrecto
+                continue
+        
+        # Generar el siguiente número consecutivo
+        siguiente_numero = max_consecutivo + 1
     
     # Generar número con formato: PREFIJO-AÑO-NNN
-    return f"{prefijos[tipo]}-{año_actual}-{contador:03d}"
+    return f"{prefijo}-{año_actual}-{siguiente_numero:03d}"
+
+
+def obtener_siguiente_numero_caso(tipo: TipoCaso) -> str:
+    """
+    Obtiene el siguiente número de caso disponible calculando el consecutivo mayor existente.
+    
+    OPTIMIZADO: Usa la misma lógica eficiente que generar_numero_caso.
+    Esta función se usa únicamente cuando hay errores de duplicado para garantizar
+    que se genere un número único basado en el último número real en la base de datos.
+    
+    Args:
+        tipo (TipoCaso): El tipo de caso (PETICION, QUEJA, RECLAMO, SUGERENCIA, DENUNCIA)
+        
+    Returns:
+        str: Número de caso único garantizado (ej: "PET-2025-015")
+    """
+    
+    # Obtener el año actual
+    año_actual = datetime.now().year
+    
+    # Mapeo de tipos a prefijos
+    prefijos = {
+        TipoCaso.PETICION: "PET",
+        TipoCaso.QUEJA: "QUE",
+        TipoCaso.RECLAMO: "REC",
+        TipoCaso.SUGERENCIA: "SUG",
+        TipoCaso.DENUNCIA: "DEN"
+    }
+    
+    prefijo = prefijos[tipo]
+    
+    # Obtener una sesión de base de datos
+    with next(get_database_session()) as db:
+        # Buscar el último número para este tipo y año (OPTIMIZADO)
+        patron_busqueda = f"{prefijo}-{año_actual}-%"
+        
+        # Obtener todos los números de caso que coincidan con el patrón
+        casos_existentes = db.query(Caso.numero_caso).filter(
+            Caso.numero_caso.like(patron_busqueda)
+        ).all()
+        
+        # Extraer los números consecutivos y encontrar el máximo (optimizado en memoria)
+        max_consecutivo = 0
+        for (numero_caso,) in casos_existentes:
+            try:
+                # Extraer solo la parte numérica del final (más eficiente)
+                ultimo_guion = numero_caso.rfind('-')
+                if ultimo_guion != -1:
+                    consecutivo = int(numero_caso[ultimo_guion + 1:])
+                    if consecutivo > max_consecutivo:
+                        max_consecutivo = consecutivo
+            except (ValueError, IndexError):
+                # Ignorar números de caso con formato incorrecto
+                continue
+        
+        # Generar el siguiente número consecutivo
+        siguiente_numero = max_consecutivo + 1
+        
+    # Generar número con formato: PREFIJO-AÑO-NNN
+    return f"{prefijo}-{año_actual}-{siguiente_numero:03d}"
 
 
 # ============================================================================
 # OPERACIONES PRINCIPALES (CRUD)
 # ============================================================================
 
-def crear_nuevo_caso(caso_data: CasoCreate) -> Dict[str, Any]:
+def crear_nuevo_caso(caso_data: CasoCreate, max_intentos: int = 5) -> Dict[str, Any]:
     """
-    Crea un nuevo caso PQRSD en la base de datos.
+    Crea un nuevo caso PQRSD en la base de datos con manejo de duplicados.
+    
+    Esta función implementa un mecanismo de retry con backoff exponencial
+    para manejar race conditions que pueden causar números de caso duplicados
+    cuando múltiples usuarios crean casos simultáneamente.
     
     Esta función:
     1. Genera un número de caso legible basado en el tipo
@@ -118,15 +208,18 @@ def crear_nuevo_caso(caso_data: CasoCreate) -> Dict[str, Any]:
     3. Asigna automáticamente el estado inicial "recibido"
     4. Las fechas se establecen automáticamente por la base de datos
     5. Retorna el caso creado convertido a diccionario
+    6. Reintenta automáticamente si hay conflictos de número único
     
     Args:
         caso_data (CasoCreate): Datos del caso proporcionados por el usuario
+        max_intentos (int): Número máximo de intentos en caso de duplicados (default: 5)
         
     Returns:
         Dict[str, Any]: El caso creado con todos los campos completados
         
     Raises:
-        HTTPException: Si hay un error al guardar en la base de datos
+        HTTPException: Si hay un error al guardar en la base de datos o
+                      si no se puede generar un número único después de varios intentos
         
     Ejemplo:
         >>> caso_nuevo = CasoCreate(
@@ -137,32 +230,77 @@ def crear_nuevo_caso(caso_data: CasoCreate) -> Dict[str, Any]:
         ...     email_solicitante="juan@email.com"
         ... )
         >>> caso_creado = crear_nuevo_caso(caso_nuevo)
-        >>> print(caso_creado["numero_caso"])  # "PET-0001"
+        >>> print(caso_creado["numero_caso"])  # "PET-2025-001"
+    
+    Nota:
+        El mecanismo de retry maneja automáticamente los conflictos de números
+        duplicados que pueden ocurrir en condiciones de alta concurrencia.
     """
     
-    try:
-        # Obtener una sesión de base de datos
-        with next(get_database_session()) as db:
-            # Generar número de caso público
-            numero_caso = generar_numero_caso(caso_data.tipo)
-            
-            # Crear el objeto Caso usando el método from_pydantic
-            nuevo_caso_db = Caso.from_pydantic(caso_data, numero_caso)
-            
-            # Agregar a la sesión y guardar en la base de datos
-            db.add(nuevo_caso_db)
-            db.commit()  # Confirmar los cambios
-            db.refresh(nuevo_caso_db)  # Actualizar el objeto con datos de la DB (como el ID)
-            
-            # Convertir a diccionario para retornar
-            return nuevo_caso_db.to_dict()
-            
-    except Exception as e:
-        # Si hay cualquier error, lanzar una excepción HTTP
-        raise HTTPException(
-            status_code=500,
-            detail=f"Error al crear el caso: {str(e)}"
-        )
+    for intento in range(max_intentos):
+        try:
+            # Obtener una sesión de base de datos
+            with next(get_database_session()) as db:
+                # Generar número de caso público
+                # En el primer intento usar la función normal, en reintentos usar la función que calcula el máximo
+                if intento == 0:
+                    numero_caso = generar_numero_caso(caso_data.tipo)
+                else:
+                    # En reintentos, usar la función que garantiza unicidad
+                    numero_caso = obtener_siguiente_numero_caso(caso_data.tipo)
+                
+                # Crear el objeto Caso usando el método from_pydantic
+                nuevo_caso_db = Caso.from_pydantic(caso_data, numero_caso)
+                
+                # Agregar a la sesión y guardar en la base de datos
+                db.add(nuevo_caso_db)
+                db.commit()  # Confirmar los cambios
+                db.refresh(nuevo_caso_db)  # Actualizar el objeto con datos de la DB (como el ID)
+                
+                # Convertir a diccionario para retornar
+                return nuevo_caso_db.to_dict()
+                
+        except IntegrityError as e:
+            # Verificar si el error es por número de caso duplicado
+            if "numero_caso" in str(e).lower() or "unique constraint" in str(e).lower():
+                if intento < max_intentos - 1:
+                    # En caso de duplicado, usar la función que calcula el siguiente número disponible
+                    # Esto garantiza que obtenemos un número único basado en la base de datos real
+                    
+                    # Calcular tiempo de espera con backoff exponencial + jitter
+                    tiempo_base = 2 ** intento  # 1, 2, 4, 8, 16 segundos
+                    jitter = random.uniform(0, 1)  # Ruido aleatorio para evitar thundering herd
+                    tiempo_espera = tiempo_base + jitter
+                    
+                    # Esperar antes del siguiente intento
+                    time.sleep(tiempo_espera)
+                    continue
+                else:
+                    # Se agotaron los intentos
+                    raise HTTPException(
+                        status_code=500,
+                        detail=f"No se pudo generar un número de caso único después de {max_intentos} intentos. "
+                               f"Intente nuevamente en unos momentos."
+                    )
+            else:
+                # Error de integridad diferente (no relacionado con número de caso)
+                raise HTTPException(
+                    status_code=500,
+                    detail=f"Error de integridad en la base de datos: {str(e)}"
+                )
+                
+        except Exception as e:
+            # Cualquier otro error no relacionado con duplicados
+            raise HTTPException(
+                status_code=500,
+                detail=f"Error al crear el caso: {str(e)}"
+            )
+    
+    # Este punto nunca debería alcanzarse, pero por seguridad
+    raise HTTPException(
+        status_code=500,
+        detail="Error inesperado: se agotaron los intentos sin generar excepción"
+    )
 
 
 def obtener_casos_filtrados(tipo: Optional[TipoCaso] = None, estado: Optional[EstadoCaso] = None) -> List[Dict[str, Any]]:

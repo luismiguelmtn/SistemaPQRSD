@@ -199,7 +199,7 @@ uvicorn main:app --host localhost --port 8001 --reload
 ## 📁 Estructura del Proyecto
 
 ```
-pqrsd-eso/
+pqrsd/
 ├── 📄 main.py              # Aplicación principal FastAPI
 ├── 📄 routes.py            # Rutas y endpoints
 ├── 📄 models.py            # Modelos Pydantic

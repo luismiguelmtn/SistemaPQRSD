@@ -1,6 +1,6 @@
-# 🚀 Sistema PQRSD - ESO Rionegro
+# 🚀 Sistema PQRSD
 
-Sistema de **Peticiones, Quejas, Reclamos, Sugerencias y Denuncias** desarrollado con **FastAPI** y **PostgreSQL** para la Empresa de Seguridad del Oriente ESO Rionegro SAS.
+Sistema de **Peticiones, Quejas, Reclamos, Sugerencias y Denuncias** desarrollado con **FastAPI** y **PostgreSQL**.
 
 ## 📋 Descripción
 
@@ -16,7 +16,7 @@ Sistema robusto y escalable para gestionar casos PQRSD con:
 ## 🏗️ Estructura del Proyecto
 
 ```
-pqrsd-eso/
+pqrsd/
 ├── main.py              # Configuración principal de FastAPI
 ├── routes.py            # Endpoints de la API REST
 ├── services.py          # Lógica de negocio y servicios
@@ -50,7 +50,7 @@ pqrsd-eso/
 1. **Clonar el repositorio**
    ```bash
    git clone <url-del-repositorio>
-   cd pqrsd-eso
+   cd pqrsd
    ```
 
 2. **Crear entorno virtual**
@@ -97,9 +97,9 @@ pqrsd-eso/
 1. **Instalar PostgreSQL 12+** en tu sistema
 2. **Crear base de datos**
    ```sql
-   CREATE DATABASE pqrsd_eso;
+   CREATE DATABASE pqrsd;
    CREATE USER pqrsd_user WITH PASSWORD 'tu_contraseña';
-   GRANT ALL PRIVILEGES ON DATABASE pqrsd_eso TO pqrsd_user;
+   GRANT ALL PRIVILEGES ON DATABASE pqrsd TO pqrsd_user;
    ```
 3. **Configurar .env** con tus credenciales
 4. **Seguir pasos 2-6** de la instalación con Docker
@@ -322,4 +322,4 @@ Para problemas o consultas:
 
 ---
 
-**🚀 Sistema PQRSD ESO Rionegro - Listo para producción con PostgreSQL** 🎉
+**🚀 Sistema PQRSD - Listo para producción con PostgreSQL** 🎉

@@ -1,6 +1,6 @@
 # main.py - Sistema PQRSD con PostgreSQL
 """
-🏢 Sistema PQRSD - Empresa de Seguridad del Oriente (ESO)
+🏢 Sistema PQRSD
 
 Este es el archivo principal de la aplicación FastAPI del Sistema PQRSD,
 optimizado para funcionar con PostgreSQL como base de datos empresarial.

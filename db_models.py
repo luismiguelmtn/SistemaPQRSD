@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-Modelos de Base de Datos PostgreSQL para el Sistema PQRSD ESO
+Modelos de Base de Datos PostgreSQL para el Sistema PQRSD
 
 Este archivo define las tablas de PostgreSQL usando SQLAlchemy ORM.
 Optimizado para PostgreSQL con índices, restricciones y tipos de datos específicos.
@@ -222,7 +222,7 @@ class Caso(Base):
         Index('idx_caso_fecha_desc', 'fecha_creacion'),
         
         # Comentario de la tabla para documentación en PostgreSQL
-        {'comment': 'Tabla principal para almacenar casos PQRSD del sistema ESO. '
+        {'comment': 'Tabla principal para almacenar casos PQRSD del sistema. '
                    'Optimizada para PostgreSQL con índices estratégicos para consultas frecuentes.'}
     )
     
@@ -243,9 +243,9 @@ class Caso(Base):
             str: Representación compacta con información clave del caso
         
         Example:
-            >>> caso = Caso(id=1, numero_caso='ESO-2024-001', tipo=TipoCaso.PETICION)
+            >>> caso = Caso(id=1, numero_caso='PET-2024-001', tipo=TipoCaso.PETICION)
             >>> print(caso)
-            <Caso(id=1, numero='ESO-2024-001', tipo='PETICION', estado='RECIBIDO')>
+            <Caso(id=1, numero='PET-2024-001', tipo='PETICION', estado='RECIBIDO')>
         """
         return f"<Caso(id={self.id}, numero='{self.numero_caso}', tipo='{self.tipo}', estado='{self.estado}')>"
     
@@ -266,7 +266,7 @@ class Caso(Base):
             >>> caso.to_dict()
             {
                 'id': 1,
-                'numero_caso': 'ESO-2024-001',
+                'numero_caso': 'PET-2024-001',
                 'tipo': 'PETICION',
                 'estado': 'RECIBIDO',
                 'fecha_creacion': '2024-01-15T10:30:00',
@@ -312,7 +312,7 @@ class Caso(Base):
         Example:
             >>> from pydantic_models import CasoCreate
             >>> pydantic_caso = CasoCreate(tipo='PETICION', asunto='...', ...)
-            >>> db_caso = Caso.from_pydantic(pydantic_caso, 'ESO-2024-001')
+            >>> db_caso = Caso.from_pydantic(pydantic_caso, 'PET-2024-001')
             >>> session.add(db_caso)
         
         Note:
