@@ -94,9 +94,10 @@ python init_db.py --examples
 ```
 **¿Qué hace?** 
 - Inserta datos de prueba realistas
-- Crea 5 casos PQRSD de ejemplo (PET, QUE, REC, SUG, DEN)
+- Crea 5 casos PQRSD de ejemplo con numeración automática (PET-2025-0001, QUE-2025-0001, etc.)
 - Útil para testing, desarrollo y demostración
 - Incluye casos en diferentes estados (recibido, en proceso, resuelto, cerrado)
+- Demuestra el sistema de numeración inteligente por tipo y año
 
 ---
 
@@ -124,7 +125,8 @@ uvicorn main:app --host localhost --port 8000 --reload
 ### **Endpoints Principales**
 - **Estadísticas:** http://localhost:8000/estadisticas/
 - **Casos:** http://localhost:8000/casos/
-- **API:** http://localhost:8000/api/
+- **Crear Caso:** http://localhost:8000/casos/ (POST)
+- **Buscar por Número:** http://localhost:8000/casos/numero/{numero_formateado}
 
 ---
 

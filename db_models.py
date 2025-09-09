@@ -108,14 +108,22 @@ class Caso(Base):
         comment="Identificador único interno del caso"
     )
     
-    # Número de caso público (legible para humanos)
-    # Ejemplo: "CASO-2024-001", "PET-2024-001"
+    # Número de caso consecutivo (solo el número)
+    # Ejemplo: 1, 2, 3, 4...
     numero_caso = Column(
-        String(50),        # Máximo 50 caracteres
-        unique=True,       # Debe ser único en toda la tabla
+        Integer,           # Número entero consecutivo
         nullable=False,    # No puede ser NULL (obligatorio)
         index=True,        # Índice para búsquedas rápidas
-        comment="Número de caso único y legible para el público"
+        comment="Número consecutivo del caso por tipo y año"
+    )
+    
+    # Año del caso
+    # Se extrae automáticamente de fecha_creacion pero se almacena por rendimiento
+    anio = Column(
+        Integer,           # Año como entero (ej: 2024)
+        nullable=False,    # No puede ser NULL (obligatorio)
+        index=True,        # Índice para búsquedas rápidas por año
+        comment="Año del caso para optimizar consultas"
     )
     
     # Tipo de caso (petición, queja, reclamo, sugerencia, denuncia)
@@ -221,6 +229,12 @@ class Caso(Base):
         # Índice para consultas de casos recientes (ordenamiento por fecha)
         Index('idx_caso_fecha_desc', 'fecha_creacion'),
         
+        # Índice único compuesto para garantizar unicidad por tipo, año y número
+        Index('idx_caso_tipo_anio_numero', 'tipo', 'anio', 'numero_caso', unique=True),
+        
+        # Índice para consultas por año
+        Index('idx_caso_anio', 'anio'),
+        
         # Comentario de la tabla para documentación en PostgreSQL
         {'comment': 'Tabla principal para almacenar casos PQRSD del sistema. '
                    'Optimizada para PostgreSQL con índices estratégicos para consultas frecuentes.'}
@@ -243,9 +257,9 @@ class Caso(Base):
             str: Representación compacta con información clave del caso
         
         Example:
-            >>> caso = Caso(id=1, numero_caso='PET-2024-001', tipo=TipoCaso.PETICION)
+            >>> caso = Caso(id=1, numero_caso='PET-2024-0001', tipo=TipoCaso.PETICION)
             >>> print(caso)
-            <Caso(id=1, numero='PET-2024-001', tipo='PETICION', estado='RECIBIDO')>
+            <Caso(id=1, numero='PET-2024-0001', tipo='PETICION', estado='RECIBIDO')>
         """
         return f"<Caso(id={self.id}, numero='{self.numero_caso}', tipo='{self.tipo}', estado='{self.estado}')>"
     
@@ -266,16 +280,21 @@ class Caso(Base):
             >>> caso.to_dict()
             {
                 'id': 1,
-                'numero_caso': 'PET-2024-001',
+                'numero_caso': 'PET-2024-0001',
                 'tipo': 'PETICION',
                 'estado': 'RECIBIDO',
                 'fecha_creacion': '2024-01-15T10:30:00',
                 ...
             }
         """
+        # Importar la función de formateo aquí para evitar imports circulares
+        from services import formatear_numero_caso
+        
         return {
             'id': self.id,
             'numero_caso': self.numero_caso,
+            'anio': self.anio,
+            'numero_caso_formateado': formatear_numero_caso(self.tipo, self.numero_caso, self.anio) if self.tipo and self.numero_caso and self.anio else None,
             'tipo': self.tipo.value if self.tipo else None,
             'asunto': self.asunto,
             'descripcion': self.descripcion,
@@ -289,7 +308,7 @@ class Caso(Base):
         }
     
     @classmethod
-    def from_pydantic(cls, caso_data, numero_caso: str) -> 'Caso':
+    def from_pydantic(cls, caso_data, numero_caso: int, anio: int) -> 'Caso':
         """
         Factory method para crear instancia de Caso desde objeto Pydantic.
         
@@ -304,7 +323,8 @@ class Caso(Base):
         
         Args:
             caso_data: Objeto CasoCreate de Pydantic con datos validados
-            numero_caso: Número único generado para el caso
+            numero_caso: Número consecutivo del caso (entero)
+            anio: Año del caso (entero)
             
         Returns:
             Caso: Nueva instancia lista para persistir en PostgreSQL
@@ -312,7 +332,7 @@ class Caso(Base):
         Example:
             >>> from pydantic_models import CasoCreate
             >>> pydantic_caso = CasoCreate(tipo='PETICION', asunto='...', ...)
-            >>> db_caso = Caso.from_pydantic(pydantic_caso, 'PET-2024-001')
+            >>> db_caso = Caso.from_pydantic(pydantic_caso, 1, 2024)
             >>> session.add(db_caso)
         
         Note:
@@ -321,6 +341,7 @@ class Caso(Base):
         """
         return cls(
             numero_caso=numero_caso,
+            anio=anio,
             tipo=caso_data.tipo,
             asunto=caso_data.asunto,
             descripcion=caso_data.descripcion,

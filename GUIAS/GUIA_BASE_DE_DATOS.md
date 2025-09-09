@@ -107,12 +107,14 @@ El sistema PQRSD ya tiene una arquitectura completa con PostgreSQL:
    - Configuración por variables de entorno
 
 3. ✅ **Modelos de Datos** (`db_models.py`)
-   - Tabla `casos` con todos los campos necesarios
-   - Índices optimizados para búsquedas
+   - Tabla `casos` con numeración optimizada (numero_caso, anio, tipo)
+   - Índices compuestos para búsquedas rápidas
    - Enums nativos de PostgreSQL
+   - Formato automático de números (PET-2025-0001)
 
 4. ✅ **Lógica de Negocio** (`services.py`)
    - Operaciones CRUD completas
+   - Generación automática de números de caso
    - Transacciones seguras
    - Manejo de errores robusto
 
@@ -136,9 +138,10 @@ El sistema PQRSD ya tiene una arquitectura completa con PostgreSQL:
 El sistema PQRSD está **completamente funcional** con PostgreSQL:
 
 ### 🎯 Características Implementadas:
+- ✅ **Numeración inteligente** - formato TIPO-AÑO-NÚMERO automático
 - ✅ **Persistencia completa** - todos los datos se guardan permanentemente
-- ✅ **Búsquedas optimizadas** - índices para consultas rápidas
-- ✅ **Estadísticas en tiempo real** - agregaciones eficientes
+- ✅ **Búsquedas optimizadas** - índices compuestos para consultas rápidas
+- ✅ **Estadísticas en tiempo real** - agregaciones eficientes por tipo y año
 - ✅ **Gestión de estados** - workflow completo de casos PQRSD
 - ✅ **Escalabilidad** - preparado para crecimiento
 - ✅ **Respaldos automáticos** - volúmenes Docker persistentes

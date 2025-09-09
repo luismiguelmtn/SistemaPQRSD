@@ -95,7 +95,8 @@ def crear_nuevo_caso(caso_data: CasoCreate) -> CasoResponse:
 
 ### 5.1 Generar Número de Caso
 ```python
-numero_caso = generar_numero_caso()  # Resultado: "PQRSD-001"
+numero_caso = generar_numero_caso(tipo="queja", anio=2025)  # Resultado: 1 (número secuencial)
+# El formato legible se genera automáticamente: "QUE-2025-0001"
 ```
 
 ### 5.2 Crear Objeto de Base de Datos
@@ -128,14 +129,14 @@ class Caso(Base):
 **SQLAlchemy ejecuta algo como:**
 ```sql
 INSERT INTO casos (
-    numero_caso, tipo, asunto, descripcion, 
+    numero_caso, anio, tipo, asunto, descripcion, 
     nombre_solicitante, email_solicitante, telefono_solicitante,
     estado, fecha_creacion, fecha_actualizacion
 ) VALUES (
-    'PQRSD-001', 'queja', 'Problema con el servicio',
+    1, 2025, 'queja', 'Problema con el servicio',
     'El servicio de seguridad no llegó a tiempo según lo acordado',
     'María García', 'maria.garcia@email.com', '3001234567',
-    'recibido', '2024-01-15 10:30:00', '2024-01-15 10:30:00'
+    'recibido', '2025-01-15 10:30:00', '2025-01-15 10:30:00'
 );
 ```
 
@@ -150,7 +151,9 @@ return CasoResponse.model_validate(nuevo_caso.to_dict())
 ```json
 {
     "id": 1,
-    "numero_caso": "PQRSD-2024-001",
+    "numero_caso": 1,
+    "anio": 2025,
+    "numero_caso_formateado": "QUE-2025-0001",
     "tipo": "queja",
     "asunto": "Problema con el servicio",
     "descripcion": "El servicio de seguridad no llegó a tiempo según lo acordado",
@@ -158,8 +161,8 @@ return CasoResponse.model_validate(nuevo_caso.to_dict())
     "email_solicitante": "maria.garcia@email.com",
     "telefono_solicitante": "3001234567",
     "estado": "recibido",
-    "fecha_creacion": "2024-01-15T10:30:00",
-    "fecha_actualizacion": "2024-01-15T10:30:00",
+    "fecha_creacion": "2025-01-15T10:30:00",
+    "fecha_actualizacion": "2025-01-15T10:30:00",
     "respuesta": null
 }
 ```

@@ -7,6 +7,7 @@ Sistema de **Peticiones, Quejas, Reclamos, Sugerencias y Denuncias** desarrollad
 Sistema robusto y escalable para gestionar casos PQRSD con:
 - ✅ **API REST completa** con FastAPI y documentación automática
 - ✅ **Base de datos PostgreSQL** con Docker para desarrollo y producción
+- ✅ **Numeración inteligente** con formato TIPO-AÑO-NÚMERO (ej: PET-2025-0001)
 - ✅ **Validaciones automáticas** con Pydantic y SQLAlchemy
 - ✅ **Documentación interactiva** con Swagger UI y ReDoc
 - ✅ **Arquitectura escalable** y mantenible con separación de responsabilidades
@@ -181,6 +182,20 @@ curl -X POST "http://localhost:8000/casos/" \
      }'
 ```
 
+**Respuesta:**
+```json
+{
+  "id": 1,
+  "numero_caso": 1,
+  "anio": 2025,
+  "numero_caso_formateado": "PET-2025-0001",
+  "tipo": "peticion",
+  "estado": "recibido",
+  "asunto": "Solicitud de información",
+  ...
+}
+```
+
 ### Listar casos con filtros
 
 ```bash
@@ -202,12 +217,14 @@ curl "http://localhost:8000/estadisticas/"
 
 ## 🏗️ Arquitectura del Sistema
 
-### 📊 Base de Datos PostgreSQL
+### 🗄️ Base de Datos PostgreSQL
 
+- **Numeración optimizada** con campos separados (numero_caso, anio, tipo)
 - **Enums nativos** para tipos y estados
-- **Índices optimizados** para consultas rápidas
+- **Índices compuestos** para consultas rápidas por tipo, año y número
 - **Validaciones a nivel de BD** para integridad
 - **Timestamps automáticos** para auditoría
+- **Formato legible** generado automáticamente (PET-2025-0001)
 
 ### 🔧 Tecnologías Utilizadas
 

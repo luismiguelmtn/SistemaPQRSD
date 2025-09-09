@@ -52,42 +52,47 @@ from db_models import Caso
 # FUNCIONES AUXILIARES
 # ============================================================================
 
-def generar_numero_caso(tipo: TipoCaso) -> str:
+def _generar_numero_caso_base(tipo: TipoCaso) -> tuple[int, int]:
     """
-    Genera un número único y legible para identificar un caso basado en su tipo.
-    
-    OPTIMIZADO: Usa MAX() en lugar de COUNT() para mejor rendimiento.
-    
-    Formato: "XXX-YYYY-NNN" donde:
-    - XXX: Prefijo según el tipo de caso
-    - YYYY: Año actual
-    - NNN: Número secuencial con 3 dígitos (001, 002, 003...)
-    
-    Prefijos por tipo:
-    - PET: Peticiones
-    - QUE: Quejas
-    - REC: Reclamos
-    - SUG: Sugerencias
-    - DEN: Denuncias
-    
-    Ejemplos:
-    - PET-2025-001 (Primera petición del 2025)
-    - QUE-2025-005 (Quinta queja del 2025)
-    - REC-2026-001 (Primer reclamo del 2026, reinicia contador)
+    Función base para generar números de caso. Implementa la lógica común
+    utilizada por generar_numero_caso.
     
     Args:
         tipo (TipoCaso): Tipo de caso para determinar el prefijo
         
     Returns:
-        str: Número de caso único con formato tipo-año-secuencial
-        
-    Nota:
-        El contador se reinicia cada año, permitiendo una mejor organización
-        y evitando números excesivamente largos con el tiempo.
+        tuple[int, int]: Tupla con (numero_consecutivo, año)
     """
     # Obtener el año actual para incluirlo en el número de caso
     año_actual = datetime.now().year
+    
+    # Obtener una sesión de base de datos
+    with next(get_database_session()) as db:
+        # Buscar el último número para este tipo y año (OPTIMIZADO)
+        # Consulta directa usando los nuevos campos tipo, anio y numero_caso
+        max_numero = db.query(Caso.numero_caso).filter(
+            Caso.tipo == tipo,
+            Caso.anio == año_actual
+        ).order_by(Caso.numero_caso.desc()).first()
+        
+        # Generar el siguiente número consecutivo
+        siguiente_numero = (max_numero[0] if max_numero else 0) + 1
+    
+    return siguiente_numero, año_actual
 
+
+def formatear_numero_caso(tipo: TipoCaso, numero_caso: int, anio: int) -> str:
+    """
+    Formatea un número de caso para presentación al usuario.
+    
+    Args:
+        tipo (TipoCaso): Tipo de caso
+        numero_caso (int): Número consecutivo
+        anio (int): Año del caso
+        
+    Returns:
+        str: Número de caso formateado (ej: "PET-2024-0001")
+    """
     # Mapeo de tipos de caso a prefijos legibles
     prefijos = {
         TipoCaso.PETICION: "PET",
@@ -98,96 +103,26 @@ def generar_numero_caso(tipo: TipoCaso) -> str:
     }
     
     prefijo = prefijos[tipo]
-    
-    # Obtener una sesión de base de datos
-    with next(get_database_session()) as db:
-        # Buscar el último número para este tipo y año (OPTIMIZADO)
-        patron_busqueda = f"{prefijo}-{año_actual}-%"
-        
-        # Obtener todos los números de caso que coincidan con el patrón
-        casos_existentes = db.query(Caso.numero_caso).filter(
-            Caso.numero_caso.like(patron_busqueda)
-        ).all()
-        
-        # Extraer los números consecutivos y encontrar el máximo (optimizado en memoria)
-        max_consecutivo = 0
-        for (numero_caso,) in casos_existentes:
-            try:
-                # Extraer solo la parte numérica del final (más eficiente)
-                ultimo_guion = numero_caso.rfind('-')
-                if ultimo_guion != -1:
-                    consecutivo = int(numero_caso[ultimo_guion + 1:])
-                    if consecutivo > max_consecutivo:
-                        max_consecutivo = consecutivo
-            except (ValueError, IndexError):
-                # Ignorar números de caso con formato incorrecto
-                continue
-        
-        # Generar el siguiente número consecutivo
-        siguiente_numero = max_consecutivo + 1
-    
-    # Generar número con formato: PREFIJO-AÑO-NNN
-    return f"{prefijo}-{año_actual}-{siguiente_numero:03d}"
+    return f"{prefijo}-{anio}-{numero_caso:04d}"
 
 
-def obtener_siguiente_numero_caso(tipo: TipoCaso) -> str:
+def generar_numero_caso(tipo: TipoCaso) -> tuple[int, int]:
     """
-    Obtiene el siguiente número de caso disponible calculando el consecutivo mayor existente.
+    Genera un número único para identificar un caso basado en su tipo.
     
-    OPTIMIZADO: Usa la misma lógica eficiente que generar_numero_caso.
-    Esta función se usa únicamente cuando hay errores de duplicado para garantizar
-    que se genere un número único basado en el último número real en la base de datos.
+    OPTIMIZADO: Consulta directa usando índices en tipo, anio y numero_caso.
     
     Args:
-        tipo (TipoCaso): El tipo de caso (PETICION, QUEJA, RECLAMO, SUGERENCIA, DENUNCIA)
+        tipo (TipoCaso): Tipo de caso para determinar el prefijo
         
     Returns:
-        str: Número de caso único garantizado (ej: "PET-2025-015")
+        tuple[int, int]: Tupla con (numero_consecutivo, año)
+        
+    Nota:
+        El contador se reinicia cada año, permitiendo una mejor organización
+        y evitando números excesivamente largos con el tiempo.
     """
-    
-    # Obtener el año actual
-    año_actual = datetime.now().year
-    
-    # Mapeo de tipos a prefijos
-    prefijos = {
-        TipoCaso.PETICION: "PET",
-        TipoCaso.QUEJA: "QUE",
-        TipoCaso.RECLAMO: "REC",
-        TipoCaso.SUGERENCIA: "SUG",
-        TipoCaso.DENUNCIA: "DEN"
-    }
-    
-    prefijo = prefijos[tipo]
-    
-    # Obtener una sesión de base de datos
-    with next(get_database_session()) as db:
-        # Buscar el último número para este tipo y año (OPTIMIZADO)
-        patron_busqueda = f"{prefijo}-{año_actual}-%"
-        
-        # Obtener todos los números de caso que coincidan con el patrón
-        casos_existentes = db.query(Caso.numero_caso).filter(
-            Caso.numero_caso.like(patron_busqueda)
-        ).all()
-        
-        # Extraer los números consecutivos y encontrar el máximo (optimizado en memoria)
-        max_consecutivo = 0
-        for (numero_caso,) in casos_existentes:
-            try:
-                # Extraer solo la parte numérica del final (más eficiente)
-                ultimo_guion = numero_caso.rfind('-')
-                if ultimo_guion != -1:
-                    consecutivo = int(numero_caso[ultimo_guion + 1:])
-                    if consecutivo > max_consecutivo:
-                        max_consecutivo = consecutivo
-            except (ValueError, IndexError):
-                # Ignorar números de caso con formato incorrecto
-                continue
-        
-        # Generar el siguiente número consecutivo
-        siguiente_numero = max_consecutivo + 1
-        
-    # Generar número con formato: PREFIJO-AÑO-NNN
-    return f"{prefijo}-{año_actual}-{siguiente_numero:03d}"
+    return _generar_numero_caso_base(tipo)
 
 
 # ============================================================================
@@ -230,7 +165,7 @@ def crear_nuevo_caso(caso_data: CasoCreate, max_intentos: int = 5) -> Dict[str, 
         ...     email_solicitante="juan@email.com"
         ... )
         >>> caso_creado = crear_nuevo_caso(caso_nuevo)
-        >>> print(caso_creado["numero_caso"])  # "PET-2025-001"
+        >>> print(formatear_numero_caso(caso_creado["tipo"], caso_creado["numero_caso"], caso_creado["anio"]))  # "PET-2025-001"
     
     Nota:
         El mecanismo de retry maneja automáticamente los conflictos de números
@@ -244,21 +179,22 @@ def crear_nuevo_caso(caso_data: CasoCreate, max_intentos: int = 5) -> Dict[str, 
                 # Generar número de caso público
                 # En el primer intento usar la función normal, en reintentos usar la función que calcula el máximo
                 if intento == 0:
-                    numero_caso = generar_numero_caso(caso_data.tipo)
+                    numero_caso, anio = generar_numero_caso(caso_data.tipo)
                 else:
                     # En reintentos, usar la función que garantiza unicidad
-                    numero_caso = obtener_siguiente_numero_caso(caso_data.tipo)
+                    numero_caso, anio = generar_numero_caso(caso_data.tipo)
                 
                 # Crear el objeto Caso usando el método from_pydantic
-                nuevo_caso_db = Caso.from_pydantic(caso_data, numero_caso)
+                nuevo_caso_db = Caso.from_pydantic(caso_data, numero_caso, anio)
                 
                 # Agregar a la sesión y guardar en la base de datos
                 db.add(nuevo_caso_db)
                 db.commit()  # Confirmar los cambios
                 db.refresh(nuevo_caso_db)  # Actualizar el objeto con datos de la DB (como el ID)
                 
-                # Convertir a diccionario para retornar
-                return nuevo_caso_db.to_dict()
+                # Convertir a modelo de respuesta
+                from models import CasoResponse
+                return CasoResponse.from_dict(nuevo_caso_db.to_dict())
                 
         except IntegrityError as e:
             # Verificar si el error es por número de caso duplicado
@@ -360,8 +296,9 @@ def obtener_casos_filtrados(tipo: Optional[TipoCaso] = None, estado: Optional[Es
             # Ejecutar la consulta y obtener todos los resultados
             casos_db = query.all()
             
-            # Convertir cada caso a diccionario
-            return [caso.to_dict() for caso in casos_db]
+            # Convertir cada caso a modelo de respuesta
+            from models import CasoResponse
+            return [CasoResponse.from_dict(caso.to_dict()) for caso in casos_db]
             
     except Exception as e:
         # Si hay cualquier error, lanzar una excepción HTTP
@@ -404,7 +341,9 @@ def obtener_caso_por_id(caso_id: str) -> Dict[str, Any]:
             if not caso:
                 raise HTTPException(status_code=404, detail="Caso no encontrado")
             
-            return caso.to_dict()
+            # Convertir a modelo de respuesta
+            from models import CasoResponse
+            return CasoResponse.from_dict(caso.to_dict())
             
     except HTTPException:
         # Re-lanzar excepciones HTTP (como 404)
@@ -417,15 +356,60 @@ def obtener_caso_por_id(caso_id: str) -> Dict[str, Any]:
         )
 
 
-def obtener_caso_por_numero(numero_caso: str) -> Dict[str, Any]:
+def parsear_numero_caso(numero_caso_formateado: str) -> tuple[TipoCaso, int, int]:
+    """
+    Parsea un número de caso formateado para extraer tipo, año y número consecutivo.
+    
+    Args:
+        numero_caso_formateado (str): Número formateado (ej: "PET-2024-0001")
+        
+    Returns:
+        tuple[TipoCaso, int, int]: Tupla con (tipo, anio, numero_consecutivo)
+        
+    Raises:
+        HTTPException: Si el formato es inválido
+    """
+    try:
+        partes = numero_caso_formateado.split('-')
+        if len(partes) != 3:
+            raise ValueError("Formato inválido")
+        
+        prefijo, anio_str, numero_str = partes
+        
+        # Mapeo inverso de prefijos a tipos
+        prefijos_inverso = {
+            "PET": TipoCaso.PETICION,
+            "QUE": TipoCaso.QUEJA,
+            "REC": TipoCaso.RECLAMO,
+            "SUG": TipoCaso.SUGERENCIA,
+            "DEN": TipoCaso.DENUNCIA
+        }
+        
+        if prefijo not in prefijos_inverso:
+            raise ValueError(f"Prefijo inválido: {prefijo}")
+        
+        tipo = prefijos_inverso[prefijo]
+        anio = int(anio_str)
+        numero = int(numero_str)
+        
+        return tipo, anio, numero
+        
+    except (ValueError, IndexError) as e:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Formato de número de caso inválido: {numero_caso_formateado}. Formato esperado: XXX-YYYY-NNNN"
+        )
+
+
+def obtener_caso_por_numero(numero_caso_formateado: str) -> Dict[str, Any]:
     """
     Busca un caso específico por su número legible en la base de datos.
     
     El número de caso es el identificador que se muestra a los usuarios
-    (ej: "PET-0001", "QUE-0005"). Es más fácil de recordar y comunicar que el UUID.
+    (ej: "PET-2024-0001", "QUE-2024-0005"). Es más fácil de recordar y comunicar que el UUID.
     
     Args:
-        numero_caso (str): Número de caso a buscar (ej: "PET-0001")
+        numero_caso_formateado (str): Número de caso a buscar (ej: "PET-2024-0001")
         
     Returns:
         Dict[str, Any]: El caso encontrado
@@ -435,22 +419,31 @@ def obtener_caso_por_numero(numero_caso: str) -> Dict[str, Any]:
         
     Ejemplo:
         >>> try:
-        ...     caso = obtener_caso_por_numero("PET-0001")
+        ...     caso = obtener_caso_por_numero("PET-2024-0001")
         ...     print(f"Estado: {caso['estado']}")
         ... except HTTPException:
         ...     print("Número de caso inválido")
     """
     try:
+        # Parsear el número de caso formateado
+        tipo, anio, numero_consecutivo = parsear_numero_caso(numero_caso_formateado)
+        
         # Obtener una sesión de base de datos
         with next(get_database_session()) as db:
-            # Buscar el caso por número
-            caso = db.query(Caso).filter(Caso.numero_caso == numero_caso).first()
+            # Buscar el caso por tipo, año y número consecutivo
+            caso = db.query(Caso).filter(
+                Caso.tipo == tipo,
+                Caso.anio == anio,
+                Caso.numero_caso == numero_consecutivo
+            ).first()
             
             # Si no se encuentra, lanzar excepción HTTP 404
             if not caso:
                 raise HTTPException(status_code=404, detail="Caso no encontrado")
             
-            return caso.to_dict()
+            # Convertir a modelo de respuesta
+            from models import CasoResponse
+            return CasoResponse.from_dict(caso.to_dict())
             
     except HTTPException:
         # Re-lanzar excepciones HTTP (como 404)
@@ -521,7 +514,9 @@ def actualizar_caso_existente(caso_id: str, actualizacion: CasoUpdate) -> Dict[s
             db.commit()
             db.refresh(caso)
             
-            return caso.to_dict()
+            # Convertir a modelo de respuesta
+            from models import CasoResponse
+            return CasoResponse.from_dict(caso.to_dict())
             
     except HTTPException:
         # Re-lanzar excepciones HTTP (como 404)
@@ -598,7 +593,10 @@ def obtener_estadisticas_sistema() -> Dict[str, Any]:
             
             # Obtener el último caso creado
             ultimo_caso = db.query(Caso).order_by(Caso.fecha_creacion.desc()).first()
-            ultimo_numero = ultimo_caso.numero_caso if ultimo_caso else "Ninguno"
+            if ultimo_caso:
+                ultimo_numero = formatear_numero_caso(ultimo_caso.tipo, ultimo_caso.numero_caso, ultimo_caso.anio)
+            else:
+                ultimo_numero = "Ninguno"
             
             return {
                 "total_casos": total_casos,

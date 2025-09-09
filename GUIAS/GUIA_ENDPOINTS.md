@@ -112,7 +112,9 @@ def crear_caso(caso: CasoCreate):  # caso ya es un objeto validado
 ```json
 {
     "id": 1,
-    "numero_caso": "PQRSD-2024-001",
+    "numero_caso": 1,
+    "anio": 2025,
+    "numero_caso_formateado": "PET-2025-0001",
     "tipo": "peticion",
     "asunto": "Solicitud de información",
     "descripcion": "Necesito información sobre los servicios",
@@ -120,8 +122,8 @@ def crear_caso(caso: CasoCreate):  # caso ya es un objeto validado
     "email_solicitante": "juan@email.com",
     "telefono_solicitante": "123456789",
     "estado": "recibido",
-    "fecha_creacion": "2024-01-15T10:30:00",
-    "fecha_actualizacion": "2024-01-15T10:30:00",
+    "fecha_creacion": "2025-01-15T10:30:00",
+    "fecha_actualizacion": "2025-01-15T10:30:00",
     "respuesta": null
 }
 ```
@@ -146,18 +148,18 @@ La función `crear_caso()` parece simple porque sigue el **principio de separaci
 Vamos a crear un endpoint para obtener un caso por su número:
 
 ```python
-@router.get("/casos/numero/{numero_caso}", response_model=CasoResponse)
-def obtener_caso_por_numero_endpoint(numero_caso: str):
+@router.get("/casos/numero/{numero_formateado}", response_model=CasoResponse)
+def obtener_caso_por_numero_endpoint(numero_formateado: str):
     """
-    Obtener un caso específico por su número
+    Obtener un caso específico por su número formateado (ej: PET-2025-0001)
     """
-    return obtener_caso_por_numero(numero_caso)
+    return obtener_caso_por_numero_formateado(numero_formateado)
 ```
 
 **¿Qué hace cada parte?**
 - `@router.get()`: Método GET (para obtener datos)
-- `"/casos/numero/{numero_caso}"`: URL con parámetro dinámico
-- `numero_caso: str`: FastAPI extrae automáticamente el valor de la URL
+- `"/casos/numero/{numero_formateado}"`: URL con parámetro dinámico
+- `numero_formateado: str`: FastAPI extrae automáticamente el valor de la URL (ej: PET-2025-0001)
 - `response_model=CasoResponse`: Tipo de respuesta esperada
 
 ## 🔧 Herramientas para Probar Endpoints

@@ -127,10 +127,16 @@ class CasoResponse(BaseModel):
         example=1
     )
     
-    # Número de caso legible para humanos (ej: "CASO-2024-001")
-    numero_caso: str = Field(
-        description="Número de caso único y legible",
-        example="CASO-2024-001"
+    # Número de caso consecutivo
+    numero_caso: int = Field(
+        description="Número consecutivo del caso",
+        example=1
+    )
+    
+    # Año del caso
+    anio: int = Field(
+        description="Año en que se creó el caso",
+        example=2024
     )
     
     # Campos que vienen del usuario (igual que CasoCreate)
@@ -187,6 +193,28 @@ class CasoResponse(BaseModel):
         description="Respuesta oficial al caso (opcional)",
         example="Los requisitos para la licencia son: 1) Cédula, 2) RUT, 3) Certificado de bomberos..."
     )
+    
+    numero_caso_formateado: str = Field(
+        description="Número de caso formateado para mostrar al usuario",
+        example="PET-2024-0001"
+    )
+    
+    @classmethod
+    def from_dict(cls, data: dict):
+        """Crea una instancia de CasoResponse desde un diccionario."""
+        # Generar numero_caso_formateado si no está presente
+        if 'numero_caso_formateado' not in data and 'tipo' in data and 'numero_caso' in data and 'anio' in data:
+            prefijo_map = {
+                "peticion": "PET",
+                "queja": "QUE", 
+                "reclamo": "REC",
+                "sugerencia": "SUG",
+                "denuncia": "DEN"
+            }
+            prefijo = prefijo_map.get(data['tipo'], "CASO")
+            data['numero_caso_formateado'] = f"{prefijo}-{data['anio']}-{data['numero_caso']:04d}"
+        
+        return cls(**data)
 
 
 class CasoUpdate(BaseModel):
