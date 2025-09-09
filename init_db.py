@@ -58,6 +58,7 @@ from database import (
 )
 from db_models import Caso
 from enums import TipoCaso, EstadoCaso
+from datos_ejemplo import obtener_casos_ejemplo
 from sqlalchemy import text
 
 # Configurar logging
@@ -201,79 +202,20 @@ def resetear_base_de_datos() -> bool:
 def crear_datos_de_ejemplo() -> bool:
     """
     Inserta datos de ejemplo realistas en PostgreSQL.
+    Utiliza el módulo datos_ejemplo para generar 100 casos con información falsa realista.
     
     Returns:
         bool: True si la inserción fue exitosa, False en caso contrario
     """
     logger.info("📝 Insertando datos de ejemplo en PostgreSQL...")
     
-    # Datos de ejemplo más realistas y variados
-    casos_ejemplo = [
-        {
-            "numero_caso": 1,
-            "anio": 2025,
-            "tipo": TipoCaso.PETICION,
-            "asunto": "Solicitud de información sobre licencias",
-            "descripcion": "Necesito conocer los requisitos para obtener una licencia de funcionamiento para mi negocio de panadería y los tiempos de respuesta estimados.",
-            "nombre_solicitante": "María Elena García López",
-            "email_solicitante": "maria.garcia@email.com",
-            "telefono_solicitante": "3001234567",
-            "estado": EstadoCaso.RECIBIDO,
-            "fecha_creacion": datetime.now() - timedelta(days=2)
-        },
-        {
-            "numero_caso": 2,
-            "anio": 2025,
-            "tipo": TipoCaso.QUEJA,
-            "asunto": "Demora en atención al público",
-            "descripcion": "El tiempo de espera en la oficina de atención al ciudadano fue de más de 2 horas para un trámite simple. Solicito mejorar el servicio.",
-            "nombre_solicitante": "Carlos Alberto Rodríguez",
-            "email_solicitante": "carlos.rodriguez@email.com",
-            "telefono_solicitante": "3009876543",
-            "estado": EstadoCaso.EN_PROCESO,
-            "fecha_creacion": datetime.now() - timedelta(days=5)
-        },
-        {
-            "numero_caso": 3,
-            "anio": 2025,
-            "tipo": TipoCaso.RECLAMO,
-            "asunto": "Cobro indebido en factura",
-            "descripcion": "Se me cobró un valor adicional que no corresponde según la tarifa oficial publicada. Solicito revisión y reembolso.",
-            "nombre_solicitante": "Ana Patricia Martínez",
-            "email_solicitante": "ana.martinez@email.com",
-            "telefono_solicitante": None,
-            "estado": EstadoCaso.RESUELTO,
-            "respuesta": "Se ha verificado el cobro y se procederá con el reembolso correspondiente. El valor será devuelto en los próximos 5 días hábiles.",
-            "fecha_creacion": datetime.now() - timedelta(days=10),
-            "fecha_actualizacion": datetime.now() - timedelta(days=1)
-        },
-        {
-            "numero_caso": 4,
-            "anio": 2025,
-            "tipo": TipoCaso.SUGERENCIA,
-            "asunto": "Implementar sistema de citas online",
-            "descripcion": "Propongo implementar un sistema de citas por internet para evitar las largas filas y optimizar la atención al ciudadano.",
-            "nombre_solicitante": "Luis Fernando Hernández",
-            "email_solicitante": "luis.hernandez@email.com",
-            "telefono_solicitante": "3005555555",
-            "estado": EstadoCaso.CERRADO,
-            "respuesta": "Agradecemos su sugerencia. Hemos evaluado la propuesta y está siendo considerada para implementación en el próximo año.",
-            "fecha_creacion": datetime.now() - timedelta(days=7),
-            "fecha_actualizacion": datetime.now() - timedelta(days=2)
-        },
-        {
-            "numero_caso": 5,
-            "anio": 2025,
-            "tipo": TipoCaso.DENUNCIA,
-            "asunto": "Irregularidad en proceso de contratación",
-            "descripcion": "Reporto posibles irregularidades en el proceso de contratación del proyecto de infraestructura municipal. Solicito investigación.",
-            "nombre_solicitante": "Ciudadano Anónimo",
-            "email_solicitante": "anonimo@email.com",
-            "telefono_solicitante": None,
-            "estado": EstadoCaso.EN_PROCESO,
-            "fecha_creacion": datetime.now() - timedelta(days=3)
-        }
-    ]
+    # Obtener casos de ejemplo del módulo externo
+    try:
+        casos_ejemplo = obtener_casos_ejemplo()
+        logger.info(f"✅ Se generaron {len(casos_ejemplo)} casos de ejemplo")
+    except Exception as e:
+        logger.error(f"❌ Error generando casos de ejemplo: {e}")
+        return False
     
     try:
         # Obtener una sesión de base de datos
