@@ -26,7 +26,6 @@ from datetime import datetime
 import time
 import random
 from fastapi import HTTPException
-from sqlalchemy import extract
 from sqlalchemy.exc import IntegrityError
 from enums import TipoCaso, EstadoCaso
 from models import CasoCreate, CasoUpdate
@@ -52,33 +51,7 @@ from db_models import Caso
 # FUNCIONES AUXILIARES
 # ============================================================================
 
-def _generar_numero_caso_base(tipo: TipoCaso) -> tuple[int, int]:
-    """
-    Función base para generar números de caso. Implementa la lógica común
-    utilizada por generar_numero_caso.
-    
-    Args:
-        tipo (TipoCaso): Tipo de caso para determinar el prefijo
-        
-    Returns:
-        tuple[int, int]: Tupla con (numero_consecutivo, año)
-    """
-    # Obtener el año actual para incluirlo en el número de caso
-    año_actual = datetime.now().year
-    
-    # Obtener una sesión de base de datos
-    with next(get_database_session()) as db:
-        # Buscar el último número para este tipo y año (OPTIMIZADO)
-        # Consulta directa usando los nuevos campos tipo, anio y numero_caso
-        max_numero = db.query(Caso.numero_caso).filter(
-            Caso.tipo == tipo,
-            Caso.anio == año_actual
-        ).order_by(Caso.numero_caso.desc()).first()
-        
-        # Generar el siguiente número consecutivo
-        siguiente_numero = (max_numero[0] if max_numero else 0) + 1
-    
-    return siguiente_numero, año_actual
+
 
 
 def formatear_numero_caso(tipo: TipoCaso, numero_caso: int, anio: int) -> str:
@@ -122,7 +95,22 @@ def generar_numero_caso(tipo: TipoCaso) -> tuple[int, int]:
         El contador se reinicia cada año, permitiendo una mejor organización
         y evitando números excesivamente largos con el tiempo.
     """
-    return _generar_numero_caso_base(tipo)
+    # Obtener el año actual para incluirlo en el número de caso
+    año_actual = datetime.now().year
+    
+    # Obtener una sesión de base de datos
+    with next(get_database_session()) as db:
+        # Buscar el último número para este tipo y año (OPTIMIZADO)
+        # Consulta directa usando los nuevos campos tipo, anio y numero_caso
+        max_numero = db.query(Caso.numero_caso).filter(
+            Caso.tipo == tipo,
+            Caso.anio == año_actual
+        ).order_by(Caso.numero_caso.desc()).first()
+        
+        # Generar el siguiente número consecutivo
+        siguiente_numero = (max_numero[0] if max_numero else 0) + 1
+    
+    return siguiente_numero, año_actual
 
 
 # ============================================================================

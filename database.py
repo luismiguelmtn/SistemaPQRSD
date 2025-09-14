@@ -104,10 +104,38 @@ def get_database_session() -> Generator:
     3. Automáticamente la cierra al finalizar
     4. Maneja errores y rollbacks automáticamente
     
+    ¿Qué es una sesión?
+    Una sesión es como abrir un "canal de comunicación" transaccional con PostgreSQL.
+    A través de la sesión puedes:
+    - Hacer consultas (SELECT) con aislamiento transaccional
+    - Insertar datos (INSERT) con validación de integridad
+    - Actualizar datos (UPDATE) con bloqueos optimistas
+    - Eliminar datos (DELETE) con verificación de restricciones
+    
+    ¿Por qué usar yield en lugar de return?
+    yield convierte esta función en un "generador", lo que permite:
+    - Abrir la sesión y iniciar una transacción
+    - Entregar la sesión para que la uses
+    - Automáticamente hacer commit/rollback según el resultado
+    - Cerrar la sesión y liberar la conexión al pool
+    
+    Ventajas del patrón generador:
+    - Garantiza liberación de recursos
+    - Manejo automático de transacciones
+    - Previene memory leaks
+    - Integración con context managers
+    
     Uso típico en FastAPI:
     ```python
     def get_casos(db: Session = Depends(get_db)):
         return db.query(Caso).all()
+    ```
+    
+    Uso con context manager:
+    ```python
+    with get_database_session() as db:
+        # Operaciones con la base de datos
+        # Commit automático si no hay errores
     ```
     
     Yields:
@@ -133,57 +161,6 @@ def get_database_session() -> Generator:
 
 # Alias para compatibilidad con FastAPI Depends
 get_db = get_database_session
-
-
-def get_database_session_old() -> Generator:
-    """
-    Obtiene una nueva sesión de base de datos PostgreSQL con manejo seguro de conexiones.
-    
-    ¿Qué es una sesión?
-    Una sesión es como abrir un "canal de comunicación" transaccional con PostgreSQL.
-    A través de la sesión puedes:
-    - Hacer consultas (SELECT) con aislamiento transaccional
-    - Insertar datos (INSERT) con validación de integridad
-    - Actualizar datos (UPDATE) con bloqueos optimistas
-    - Eliminar datos (DELETE) con verificación de restricciones
-    
-    ¿Por qué usar yield en lugar de return?
-    yield convierte esta función en un "generador", lo que permite:
-    - Abrir la sesión y iniciar una transacción
-    - Entregar la sesión para que la uses
-    - Automáticamente hacer commit/rollback según el resultado
-    - Cerrar la sesión y liberar la conexión al pool
-    
-    Ventajas del patrón generador:
-    - Garantiza liberación de recursos
-    - Manejo automático de transacciones
-    - Previene memory leaks
-    - Integración con context managers
-    
-    Uso típico:
-    ```python
-    with get_database_session() as db:
-        # Operaciones con la base de datos
-        # Commit automático si no hay errores
-    ```
-    
-    Returns:
-        Generator: Generador que produce una sesión de SQLAlchemy
-    
-    Raises:
-        SQLAlchemyError: Si hay problemas de conexión o transacción
-    """
-    db = SessionLocal()
-    try:
-        yield db  # Entrega la sesión para usar
-    except Exception as e:
-        # En caso de error, hacer rollback de la transacción
-        db.rollback()
-        logger.error(f"Error en sesión de base de datos: {e}")
-        raise
-    finally:
-        # Siempre cerrar la sesión para liberar la conexión
-        db.close()
 
 def create_tables():
     """

@@ -1,8 +1,6 @@
 # 🐳 Docker Compose para Sistema PQRSD
 # Configuración profesional para desarrollo y producción
 
-version: '3.8'
-
 services:
   # 🐘 Base de datos PostgreSQL
   postgres:
