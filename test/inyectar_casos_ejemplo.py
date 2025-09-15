@@ -1,20 +1,40 @@
 # -*- coding: utf-8 -*-
 """
-Generador de datos de ejemplo para el sistema PQRSD.
+Script para generar casos de ejemplo para el sistema PQRSD.
 
-Este módulo contiene 100 casos de ejemplo con datos falsos realistas
-para simular un entorno de producción y facilitar las pruebas del sistema.
+Este módulo genera datos falsos realistas para poblar la base de datos
+con casos de ejemplo que permitan probar el sistema.
+
+Uso:
+    python inyectar_casos_ejemplo.py [número_de_casos]
+    
+Ejemplos:
+    python inyectar_casos_ejemplo.py        # Genera 100 casos (por defecto)
+    python inyectar_casos_ejemplo.py 50     # Genera 50 casos
+    python inyectar_casos_ejemplo.py 200    # Genera 200 casos
+
+Autor: Sistema PQRSD
+Fecha: 2025
 """
 
+import sys
+import os
 from datetime import datetime, timedelta
 from typing import List, Dict, Any
 import random
-from enums import TipoCaso, EstadoCaso
+
+# Agregar el directorio raíz del proyecto al path de Python
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+from app.core.enums import TipoCaso, EstadoCaso
 
 
-def generar_casos_ejemplo() -> List[Dict[str, Any]]:
+def generar_casos_ejemplo(n: int = 100) -> List[Dict[str, Any]]:
     """
-    Genera 100 casos de ejemplo con datos falsos realistas.
+    Genera n casos de ejemplo con datos falsos realistas.
+    
+    Args:
+        n (int): Número de casos a generar. Por defecto 100.
     
     Returns:
         List[Dict[str, Any]]: Lista de diccionarios con los datos de los casos
@@ -141,7 +161,7 @@ def generar_casos_ejemplo() -> List[Dict[str, Any]]:
     
     casos_ejemplo = []
     
-    for i in range(1, 101):  # Generar 100 casos
+    for i in range(1, n + 1):  # Generar n casos
         # Seleccionar tipo de caso aleatoriamente
         tipo = random.choice(list(TipoCaso))
         
@@ -229,19 +249,37 @@ def generar_casos_ejemplo() -> List[Dict[str, Any]]:
     return casos_ejemplo
 
 
-def obtener_casos_ejemplo() -> List[Dict[str, Any]]:
+def obtener_casos_ejemplo(n: int = 100) -> List[Dict[str, Any]]:
     """
     Función pública para obtener los casos de ejemplo.
+    
+    Args:
+        n (int): Número de casos a generar. Por defecto 100.
     
     Returns:
         List[Dict[str, Any]]: Lista de casos de ejemplo generados
     """
-    return generar_casos_ejemplo()
+    return generar_casos_ejemplo(n)
 
 
 if __name__ == "__main__":
+    import sys
+    
+    # Obtener número de casos desde argumentos de línea de comandos
+    n = 100  # Valor por defecto
+    if len(sys.argv) > 1:
+        try:
+            n = int(sys.argv[1])
+            if n <= 0:
+                print("Error: El número de casos debe ser mayor que 0")
+                sys.exit(1)
+        except ValueError:
+            print("Error: El argumento debe ser un número entero")
+            print("Uso: python inyectar_casos_ejemplo.py [número_de_casos]")
+            sys.exit(1)
+    
     # Código para pruebas del módulo
-    casos = generar_casos_ejemplo()
+    casos = generar_casos_ejemplo(n)
     print(f"Generados {len(casos)} casos de ejemplo")
     
     # Mostrar estadísticas

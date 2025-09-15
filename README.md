@@ -25,7 +25,8 @@ pqrsd/
 ├── db_models.py         # Modelos SQLAlchemy para PostgreSQL
 ├── database.py          # Configuración de conexión PostgreSQL
 ├── enums.py             # Enumeraciones (TipoCaso, EstadoCaso)
-├── init_db.py           # Script de inicialización de BD
+├── alembic.ini          # Configuración de Alembic (migraciones)
+├── app/migrations/      # Migraciones de base de datos con Alembic
 ├── docker-compose.yml   # Configuración de Docker para PostgreSQL
 ├── .env                 # Variables de entorno (NO incluir en git)
 ├── .env.docker          # Variables para Docker
@@ -86,11 +87,11 @@ pqrsd/
 
 6. **Inicializar la base de datos**
    ```bash
-   # Crear tablas
-   python init_db.py
+   # Aplicar migraciones (crear tablas)
+   alembic upgrade head
    
-   # Crear tablas con datos de ejemplo
-   python init_db.py --examples
+   # Opcional: Cargar datos de ejemplo
+   python test/datos_ejemplo.py
    ```
 
 ### 🔧 Instalación Manual (Sin Docker)
@@ -103,7 +104,7 @@ pqrsd/
    GRANT ALL PRIVILEGES ON DATABASE pqrsd TO pqrsd_user;
    ```
 3. **Configurar .env** con tus credenciales
-4. **Seguir pasos 2-6** de la instalación con Docker
+4. **Seguir pasos 2-6** de la instalación con Docker (usando `alembic upgrade head` en lugar de init_db.py)
 
 ## 🚀 Ejecutar el Sistema
 
@@ -128,17 +129,20 @@ Una vez iniciado el servidor, accede a:
 ### 🛠️ Comandos Útiles
 
 ```bash
-# Verificar estado de la base de datos
-python init_db.py --info
+# Verificar estado de migraciones
+alembic current
 
-# Verificar conectividad
-python init_db.py --check
+# Ver historial de migraciones
+alembic history
 
-# Resetear base de datos
-python init_db.py --reset
+# Aplicar migraciones
+alembic upgrade head
 
-# Resetear y cargar datos de ejemplo
-python init_db.py --reset --examples
+# Crear nueva migración
+alembic revision --autogenerate -m "descripción"
+
+# Revertir migración
+alembic downgrade -1
 
 # Ver logs de Docker
 docker compose logs postgres
@@ -146,6 +150,35 @@ docker compose logs postgres
 # Parar PostgreSQL
 docker compose down
 ```
+
+## 🗄️ Sistema de Migraciones con Alembic
+
+El proyecto utiliza **Alembic** para gestionar cambios en la base de datos de forma controlada y versionada.
+
+### ✅ Ventajas de Alembic
+- **Versionado**: Cada cambio queda registrado con un ID único
+- **Reversibilidad**: Puedes aplicar y revertir cambios
+- **Sincronización**: Mantiene la BD idéntica entre entornos
+- **Seguridad**: Usa variables de entorno para credenciales
+
+### 🚀 Comandos Esenciales
+
+```bash
+# Aplicar todas las migraciones (despliegue inicial)
+alembic upgrade head
+
+# Crear migración después de modificar modelos
+alembic revision --autogenerate -m "Agregar tabla usuarios"
+
+# Ver estado actual
+alembic current
+
+# Ver historial completo
+alembic history --verbose
+```
+
+### 📖 Documentación Completa
+Para más detalles, consulta: **[GUIAS/ALEMBIC_GUIDE.md](GUIAS/ALEMBIC_GUIDE.md)**
 
 ## 🔗 Endpoints Principales
 
