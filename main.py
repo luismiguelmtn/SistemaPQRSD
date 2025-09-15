@@ -17,7 +17,7 @@ optimizado para funcionar con PostgreSQL como base de datos empresarial.
 🏗️ ARQUITECTURA DEL SISTEMA:
 ┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
 │   Frontend      │───▶│   FastAPI       │───▶│   PostgreSQL    │
-│   (Web/Mobile)  │    │   (main.py)     │    │   (database.py) │
+│   (Web/Mobile)  │    │   (main.py)     │    │ (app/core/database.py) │
 └─────────────────┘    └─────────────────┘    └─────────────────┘
                               │
                               ▼
@@ -31,16 +31,17 @@ optimizado para funcionar con PostgreSQL como base de datos empresarial.
 - routes.py: 🛣️ Definición de endpoints REST
 - models.py: 📋 Esquemas Pydantic para validación
 - services.py: ⚙️ Lógica de negocio y operaciones CRUD
-- database.py: 🐘 Configuración PostgreSQL y conexiones
+- app/core/database.py: 🐘 Configuración PostgreSQL y conexiones
 - db_models.py: 🗃️ Modelos SQLAlchemy para ORM
 - enums.py: 📝 Enumeraciones y constantes
-- init_db.py: 🔧 Inicialización y gestión de BD
+- alembic.ini: 🔧 Configuración de migraciones
+- app/migrations/: 📂 Historial de migraciones de BD
 
 🔧 CONFIGURACIÓN REQUERIDA:
-1. PostgreSQL instalado y corriendo
+1. PostgreSQL instalado y corriendo (Docker recomendado)
 2. Variables de entorno configuradas (.env)
 3. Dependencias Python instaladas (requirements.txt)
-4. Base de datos inicializada (python init_db.py --crear)
+4. Migraciones aplicadas (alembic upgrade head)
 
 📚 DOCUMENTACIÓN AUTOMÁTICA:
 - Swagger UI: http://localhost:8000/docs
@@ -53,7 +54,7 @@ optimizado para funcionar con PostgreSQL como base de datos empresarial.
 # ============================================================================
 
 from fastapi import FastAPI
-from app.routers.caso_router import router  # Importamos todas las rutas definidas en routes.py
+from app.routers.caso import router  # Importamos todas las rutas definidas en routes.py
 
 # ============================================================================
 # CONFIGURACIÓN DE LA APLICACIÓN

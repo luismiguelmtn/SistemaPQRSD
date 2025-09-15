@@ -23,10 +23,13 @@ pqrsd/
 ├── services.py          # Lógica de negocio y servicios
 ├── models.py            # Modelos Pydantic para validación
 ├── db_models.py         # Modelos SQLAlchemy para PostgreSQL
-├── database.py          # Configuración de conexión PostgreSQL
+├── app/
+│   ├── core/
+│   │   └── database.py  # Configuración de conexión PostgreSQL
+│   └── migrations/      # Migraciones de base de datos con Alembic
 ├── enums.py             # Enumeraciones (TipoCaso, EstadoCaso)
 ├── alembic.ini          # Configuración de Alembic (migraciones)
-├── app/migrations/      # Migraciones de base de datos con Alembic
+
 ├── docker-compose.yml   # Configuración de Docker para PostgreSQL
 ├── .env                 # Variables de entorno (NO incluir en git)
 ├── .env.docker          # Variables para Docker
@@ -85,14 +88,23 @@ pqrsd/
    docker compose up -d
    ```
 
-6. **Inicializar la base de datos**
+6. **Inicializar la base de datos** 🗄️
+   
+   **⚠️ IMPORTANTE**: Si es la primera vez que clonas el proyecto o tienes una base de datos vacía, DEBES ejecutar estos comandos:
+   
    ```bash
-   # Aplicar migraciones (crear tablas)
+   # 1. Aplicar migraciones (crear todas las tablas)
    alembic upgrade head
    
-   # Opcional: Cargar datos de ejemplo
-   python test/datos_ejemplo.py
+   # 2. Opcional: Cargar datos de ejemplo para pruebas
+   python tests/fixtures/datos_ejemplo.py
    ```
+   
+   **🔰 Para programadores nuevos en Alembic:**
+   - `alembic upgrade head` crea TODAS las tablas en tu base de datos vacía
+   - Es como ejecutar todos los CREATE TABLE automáticamente
+   - SIEMPRE ejecuta este comando en un proyecto nuevo
+   - Si no lo haces, tendrás errores de "tabla no existe"
 
 ### 🔧 Instalación Manual (Sin Docker)
 
@@ -104,7 +116,7 @@ pqrsd/
    GRANT ALL PRIVILEGES ON DATABASE pqrsd TO pqrsd_user;
    ```
 3. **Configurar .env** con tus credenciales
-4. **Seguir pasos 2-6** de la instalación con Docker (usando `alembic upgrade head` en lugar de init_db.py)
+4. **Seguir pasos 2-6** de la instalación con Docker
 
 ## 🚀 Ejecutar el Sistema
 
@@ -153,7 +165,9 @@ docker compose down
 
 ## 🗄️ Sistema de Migraciones con Alembic
 
-El proyecto utiliza **Alembic** para gestionar cambios en la base de datos de forma controlada y versionada.
+**🔰 ¿Qué es Alembic?** Es una herramienta que gestiona cambios en la base de datos de forma controlada y versionada.
+
+**🤔 ¿Por qué usamos Alembic?** Imagina que trabajas en equipo y cada uno tiene su propia base de datos. Alembic asegura que todos tengan exactamente las mismas tablas y estructura.
 
 ### ✅ Ventajas de Alembic
 - **Versionado**: Cada cambio queda registrado con un ID único
@@ -161,24 +175,90 @@ El proyecto utiliza **Alembic** para gestionar cambios en la base de datos de fo
 - **Sincronización**: Mantiene la BD idéntica entre entornos
 - **Seguridad**: Usa variables de entorno para credenciales
 
-### 🚀 Comandos Esenciales
+### 🚀 Comandos Esenciales para Principiantes
 
 ```bash
-# Aplicar todas las migraciones (despliegue inicial)
+# 🆕 PROYECTO NUEVO: Crear todas las tablas (OBLIGATORIO)
 alembic upgrade head
 
+# 📊 Ver qué versión tienes actualmente
+alembic current
+
+# 📜 Ver historial de cambios
+alembic history
+
+# 🔄 Actualizar a la última versión (cuando hay cambios nuevos)
+alembic upgrade head
+```
+
+### 🛠️ Comandos Avanzados (Para desarrolladores)
+
+```bash
 # Crear migración después de modificar modelos
 alembic revision --autogenerate -m "Agregar tabla usuarios"
 
-# Ver estado actual
-alembic current
-
-# Ver historial completo
+# Ver historial completo con detalles
 alembic history --verbose
+
+# Revertir a versión anterior
+alembic downgrade -1
 ```
 
+### 🆘 Errores Comunes y Soluciones
+
+**❌ Error: "relation 'casos' does not exist"**
+```bash
+# Solución: Ejecutar migraciones
+alembic upgrade head
+```
+
+**❌ Error: "Target database is not up to date"**
+```bash
+# Solución: Actualizar base de datos
+alembic upgrade head
+```
+
+### 🆕 ¿Acabas de clonar el proyecto? (Guía para principiantes)
+
+**Situación**: Clonaste el proyecto en tu PC y tienes una base de datos completamente vacía.
+
+**✅ Pasos obligatorios:**
+
+1. **Instalar dependencias**
+   ```bash
+   pip install -r requirements.txt
+   ```
+
+2. **Iniciar PostgreSQL**
+   ```bash
+   docker compose up -d
+   ```
+
+3. **🚨 PASO CRÍTICO: Crear todas las tablas**
+   ```bash
+   alembic upgrade head
+   ```
+   
+   **¿Qué hace este comando?**
+   - Crea TODAS las tablas necesarias (casos, etc.)
+   - Es como ejecutar todos los CREATE TABLE automáticamente
+   - Sin esto, tu aplicación NO funcionará
+
+4. **Verificar que funcionó**
+   ```bash
+   alembic current
+   # Debe mostrar algo como: "abc123def456 (head)"
+   ```
+
+5. **Opcional: Agregar datos de prueba**
+   ```bash
+   python tests/fixtures/datos_ejemplo.py
+   ```
+
+**🎉 ¡Listo!** Ahora puedes ejecutar `python -m uvicorn main:app --reload`
+
 ### 📖 Documentación Completa
-Para más detalles, consulta: **[GUIAS/ALEMBIC_GUIDE.md](GUIAS/ALEMBIC_GUIDE.md)**
+Para más detalles, consulta: **[docs/GUIA_ALEMBIC.md](docs/GUIA_ALEMBIC.md)**
 
 ## 🔗 Endpoints Principales
 
@@ -347,7 +427,7 @@ docker compose logs postgres
 **Error "duplicate key value violates unique constraint":**
 - El número de caso ya existe
 - Usar un número diferente o verificar casos existentes
-- Ejecutar `python init_db.py --info` para ver casos
+- Verificar casos existentes con la API en `/casos/`
 
 **Puerto 8000 ocupado:**
 ```bash

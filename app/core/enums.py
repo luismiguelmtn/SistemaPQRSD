@@ -90,8 +90,8 @@ class EstadoCaso(str, Enum):
 # Nota para principiantes:
 # Estas enumeraciones se usan en:
 # 1. models.py - Para validar que solo se ingresen valores permitidos
-# 2. services.py - Para filtrar casos por tipo o estado
-# 3. routes.py - Para validar parámetros en los endpoints de la API
+# 2. app/services/caso.py - Para filtrar casos por tipo o estado
+# 3. app/routers/caso.py - Para validar parámetros en los endpoints de la API
 # 
 # Ejemplo de uso:
 # tipo_valido = TipoCaso.PETICION  # Esto es correcto

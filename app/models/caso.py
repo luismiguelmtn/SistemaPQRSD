@@ -288,7 +288,7 @@ class Caso(Base):
             }
         """
         # Importar la función de formateo aquí para evitar imports circulares
-        from app.services.caso_services import formatear_numero_caso
+        from app.services.caso import formatear_numero_caso
         
         return {
             'id': self.id,

@@ -1,4 +1,4 @@
-# routes.py - API REST del Sistema PQRSD con PostgreSQL
+# app/routers/caso.py - API REST del Sistema PQRSD con PostgreSQL
 """
 🛣️ Definición de Endpoints REST para el Sistema PQRSD
 
@@ -53,7 +53,7 @@ from typing import Optional, List
 # Importamos nuestros módulos personalizados
 from app.core.enums import TipoCaso, EstadoCaso
 from app.schemas.caso import CasoCreate, CasoResponse, CasoUpdate
-from app.services.caso_services import (
+from app.services.caso import (
     crear_nuevo_caso,
     obtener_casos_filtrados,
     obtener_caso_por_id,

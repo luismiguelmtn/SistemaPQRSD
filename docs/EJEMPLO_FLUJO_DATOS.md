@@ -22,7 +22,7 @@ Content-Type: application/json
 
 ## 🚪 Paso 2: FastAPI Recibe la Petición
 
-**En `routes.py` - Línea 80:**
+**En `app/routers/caso.py` - Línea 80:**
 ```python
 @router.post("/casos/", response_model=CasoResponse)
 def crear_caso(caso: CasoCreate):
@@ -58,16 +58,16 @@ class CasoCreate(BaseModel):
 
 ## 🔄 Paso 4: Llamada a la Lógica de Negocio
 
-**En `routes.py` - Línea 111:**
+**En `app/routers/caso.py` - Línea 111:**
 ```python
 return crear_nuevo_caso(caso)
 ```
 
-Esta línea llama a la función `crear_nuevo_caso()` que está en `services.py`.
+Esta línea llama a la función `crear_nuevo_caso()` que está en `app/services/caso.py`.
 
 ## 🧠 Paso 5: Procesamiento en Services
 
-**En `services.py` - función `crear_nuevo_caso()`:**
+**En `app/services/caso.py` - función `crear_nuevo_caso()`:**
 ```python
 def crear_nuevo_caso(caso_data: CasoCreate) -> CasoResponse:
     with get_database_session() as session:
@@ -172,13 +172,13 @@ return CasoResponse.model_validate(nuevo_caso.to_dict())
 ```
 Cliente (JSON) 
     ↓
-🚪 FastAPI Router (routes.py)
+🚪 FastAPI Router (app/routers/caso.py)
     ↓ 
 ✅ Validación Pydantic (models.py)
     ↓
-🧠 Lógica de Negocio (services.py)
+🧠 Lógica de Negocio (app/services/caso.py)
     ↓
-💾 Base de Datos (db_models.py + database.py)
+💾 Base de Datos (db_models.py + app/core/database.py)
     ↓
 📤 Respuesta al Cliente (JSON)
 ```

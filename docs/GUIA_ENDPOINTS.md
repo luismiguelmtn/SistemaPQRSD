@@ -56,7 +56,7 @@ def crear_caso(caso: CasoCreate):
 return crear_nuevo_caso(caso)
 ```
 
-- Llama a la función `crear_nuevo_caso()` del archivo `services.py`
+- Llama a la función `crear_nuevo_caso()` del archivo `app/services/caso.py`
 - Le pasa el objeto `caso` que recibimos
 - Devuelve lo que esa función retorne
 
@@ -132,10 +132,10 @@ def crear_caso(caso: CasoCreate):  # caso ya es un objeto validado
 
 La función `crear_caso()` parece simple porque sigue el **principio de separación de responsabilidades**:
 
-- **`routes.py`**: Se encarga de recibir peticiones HTTP y devolver respuestas
-- **`services.py`**: Contiene la lógica de negocio (crear casos, validar, guardar en BD)
+- **`app/routers/caso.py`**: Se encarga de recibir peticiones HTTP y devolver respuestas
+- **`app/services/caso.py`**: Contiene la lógica de negocio (crear casos, validar, guardar en BD)
 - **`models.py`**: Define la estructura de los datos
-- **`database.py`**: Maneja la conexión a la base de datos
+- **`app/core/database.py`**: Maneja la conexión a la base de datos
 
 **Esto es bueno porque:**
 - Código más organizado y fácil de mantener

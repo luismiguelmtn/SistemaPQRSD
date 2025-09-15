@@ -101,7 +101,7 @@ El sistema PQRSD ya tiene una arquitectura completa con PostgreSQL:
    - Volúmenes persistentes para datos
    - Variables de entorno seguras
 
-2. ✅ **Configuración de Base de Datos** (`database.py`)
+2. ✅ **Configuración de Base de Datos** (`app/core/database.py`)
    - Pool de conexiones SQLAlchemy
    - Gestión automática de sesiones
    - Configuración por variables de entorno
@@ -112,24 +112,25 @@ El sistema PQRSD ya tiene una arquitectura completa con PostgreSQL:
    - Enums nativos de PostgreSQL
    - Formato automático de números (PET-2025-0001)
 
-4. ✅ **Lógica de Negocio** (`services.py`)
+4. ✅ **Lógica de Negocio** (`app/services/caso.py`)
    - Operaciones CRUD completas
    - Generación automática de números de caso
    - Transacciones seguras
    - Manejo de errores robusto
 
-5. ✅ **Script de Inicialización** (`init_db.py`)
+5. ✅ **Migraciones con Alembic** (`app/migrations/`)
+   - Versionado de cambios en la base de datos
    - Creación automática de tablas
-   - Datos de ejemplo
-   - Verificación de conectividad
+   - Rollback y upgrade de esquemas
 
 ### 📁 Archivos del Sistema:
-- `database.py` ✅ - Configuración PostgreSQL con SQLAlchemy
+- `app/core/database.py` ✅ - Configuración PostgreSQL con SQLAlchemy
 - `db_models.py` ✅ - Modelos de tablas y relaciones
 - `docker-compose.yml` ✅ - Configuración de contenedores
 - `.env.docker` ✅ - Variables de entorno para Docker
-- `services.py` ✅ - Lógica de negocio con PostgreSQL
-- `init_db.py` ✅ - Inicialización y gestión de BD
+- `app/services/caso.py` ✅ - Lógica de negocio con PostgreSQL
+- `alembic.ini` ✅ - Configuración de migraciones
+- `app/migrations/` ✅ - Historial de migraciones de BD
 
 ---
 
@@ -151,11 +152,14 @@ El sistema PQRSD está **completamente funcional** con PostgreSQL:
 # Iniciar PostgreSQL
 docker compose up -d
 
-# Verificar estado de la base de datos
-python init_db.py --info
+# Aplicar migraciones
+alembic upgrade head
+
+# Ver estado de migraciones
+alembic current
 
 # Cargar datos de ejemplo
-python init_db.py --examples
+python test/datos_ejemplo.py
 
 # Iniciar el servidor
 python -m uvicorn main:app --reload

@@ -79,18 +79,18 @@ docker compose up
 
 ### 6️⃣ **Inicializar Base de Datos**
 ```bash
-python init_db.py
+alembic upgrade head
 ```
 **¿Qué hace?** 
-- Verifica conexión a PostgreSQL
+- Aplica todas las migraciones de Alembic
 - Crea todas las tablas necesarias
-- Configura índices y relaciones
+- Configura índices y relaciones de forma versionada
 
 ---
 
 ### 7️⃣ **Cargar Datos de Ejemplo (Opcional)**
 ```bash
-python init_db.py --examples
+python test/datos_ejemplo.py
 ```
 **¿Qué hace?** 
 - Inserta datos de prueba realistas
@@ -132,29 +132,29 @@ uvicorn main:app --host localhost --port 8000 --reload
 
 ## 🔧 Comandos Útiles
 
+### **Verificar Estado de Migraciones**
+```bash
+alembic current
+```
+
+### **Ver Historial de Migraciones**
+```bash
+alembic history
+```
+
+### **Crear Nueva Migración**
+```bash
+alembic revision --autogenerate -m "descripción del cambio"
+```
+
+### **Revertir Migración**
+```bash
+alembic downgrade -1
+```
+
 ### **Verificar Conectividad a PostgreSQL**
 ```bash
-python init_db.py --check
-```
-
-### **Ver Estado Detallado de la Base de Datos**
-```bash
-python init_db.py --info
-```
-
-### **Resetear Base de Datos Completamente**
-```bash
-python init_db.py --reset
-```
-
-### **Resetear y Cargar Datos de Ejemplo**
-```bash
-python init_db.py --reset --examples
-```
-
-### **Ver Logs Detallados**
-```bash
-python init_db.py --verbose
+docker compose exec postgres psql -U pqrsd_user -d pqrsd_db -c "SELECT version();"
 ```
 
 ### **Parar Docker**
@@ -203,12 +203,16 @@ uvicorn main:app --host localhost --port 8001 --reload
 ```
 pqrsd/
 ├── 📄 main.py              # Aplicación principal FastAPI
-├── 📄 routes.py            # Rutas y endpoints
+├── 📁 app/routers/         # Rutas y endpoints
+│   └── 📄 caso.py          # Endpoints de casos PQRSD
 ├── 📄 models.py            # Modelos Pydantic
 ├── 📄 db_models.py         # Modelos SQLAlchemy
-├── 📄 database.py          # Configuración de base de datos
-├── 📄 services.py          # Lógica de negocio
-├── 📄 init_db.py           # Script de inicialización
+├── 📁 app/core/
+│   └── 📄 database.py      # Configuración de base de datos
+├── 📁 app/services/        # Lógica de negocio
+│   └── 📄 caso.py          # Servicios de casos PQRSD
+├── 📄 alembic.ini          # Configuración de Alembic
+├── 📁 app/migrations/      # Migraciones de base de datos
 ├── 📄 requirements.txt     # Dependencias Python
 ├── 📄 docker-compose.yml   # Configuración Docker
 ├── 📄 .env                 # Variables de entorno

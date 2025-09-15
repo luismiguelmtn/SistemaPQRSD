@@ -270,6 +270,6 @@ class CasoUpdate(BaseModel):
 #    - Requiere la librería email-validator
 # 
 # 5. Estos modelos se usan en:
-#    - routes.py: Para validar datos de entrada y salida
-#    - services.py: Para trabajar con datos validados
+#    - app/routers/caso.py: Para validar datos de entrada y salida
+#    - app/services/caso.py: Para trabajar con datos validados
 #    - FastAPI: Para generar documentación automática
