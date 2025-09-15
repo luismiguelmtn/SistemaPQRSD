@@ -45,8 +45,8 @@ from datetime import datetime
 from typing import Dict, Any, Optional
 
 # Importar la configuración de base de datos PostgreSQL
-from database import Base
-from enums import TipoCaso, EstadoCaso
+from app.core.database import Base
+from app.core.enums import TipoCaso, EstadoCaso
 
 # ============================================================================
 # MODELO DE TABLA POSTGRESQL: CASOS PQRSD
@@ -288,7 +288,7 @@ class Caso(Base):
             }
         """
         # Importar la función de formateo aquí para evitar imports circulares
-        from services import formatear_numero_caso
+        from app.services.caso_services import formatear_numero_caso
         
         return {
             'id': self.id,

@@ -42,7 +42,7 @@ interfaz entre la API REST y la base de datos PostgreSQL.
 from pydantic import BaseModel, EmailStr, Field
 from datetime import datetime
 from typing import Optional
-from enums import TipoCaso, EstadoCaso
+from app.core.enums import TipoCaso, EstadoCaso
 
 
 class CasoCreate(BaseModel):

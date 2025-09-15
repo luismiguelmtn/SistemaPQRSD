@@ -27,10 +27,10 @@ import time
 import random
 from fastapi import HTTPException
 from sqlalchemy.exc import IntegrityError
-from enums import TipoCaso, EstadoCaso
-from models import CasoCreate, CasoUpdate
-from database import get_database_session
-from db_models import Caso
+from app.core.enums import TipoCaso, EstadoCaso
+from app.schemas.caso import CasoCreate, CasoUpdate
+from app.core.database import get_database_session
+from app.models.caso import Caso
 
 
 # ============================================================================
@@ -181,7 +181,7 @@ def crear_nuevo_caso(caso_data: CasoCreate, max_intentos: int = 5) -> Dict[str, 
                 db.refresh(nuevo_caso_db)  # Actualizar el objeto con datos de la DB (como el ID)
                 
                 # Convertir a modelo de respuesta
-                from models import CasoResponse
+                from app.schemas.caso import CasoResponse
                 return CasoResponse.from_dict(nuevo_caso_db.to_dict())
                 
         except IntegrityError as e:
@@ -285,7 +285,7 @@ def obtener_casos_filtrados(tipo: Optional[TipoCaso] = None, estado: Optional[Es
             casos_db = query.all()
             
             # Convertir cada caso a modelo de respuesta
-            from models import CasoResponse
+            from app.schemas.caso import CasoResponse
             return [CasoResponse.from_dict(caso.to_dict()) for caso in casos_db]
             
     except Exception as e:
@@ -330,7 +330,7 @@ def obtener_caso_por_id(caso_id: str) -> Dict[str, Any]:
                 raise HTTPException(status_code=404, detail="Caso no encontrado")
             
             # Convertir a modelo de respuesta
-            from models import CasoResponse
+            from app.schemas.caso import CasoResponse
             return CasoResponse.from_dict(caso.to_dict())
             
     except HTTPException:
@@ -430,7 +430,7 @@ def obtener_caso_por_numero(numero_caso_formateado: str) -> Dict[str, Any]:
                 raise HTTPException(status_code=404, detail="Caso no encontrado")
             
             # Convertir a modelo de respuesta
-            from models import CasoResponse
+            from app.schemas.caso import CasoResponse
             return CasoResponse.from_dict(caso.to_dict())
             
     except HTTPException:
@@ -503,7 +503,7 @@ def actualizar_caso_existente(caso_id: str, actualizacion: CasoUpdate) -> Dict[s
             db.refresh(caso)
             
             # Convertir a modelo de respuesta
-            from models import CasoResponse
+            from app.schemas.caso import CasoResponse
             return CasoResponse.from_dict(caso.to_dict())
             
     except HTTPException:

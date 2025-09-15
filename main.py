@@ -53,7 +53,7 @@ optimizado para funcionar con PostgreSQL como base de datos empresarial.
 # ============================================================================
 
 from fastapi import FastAPI
-from routes import router  # Importamos todas las rutas definidas en routes.py
+from app.routers.caso_router import router  # Importamos todas las rutas definidas en routes.py
 
 # ============================================================================
 # CONFIGURACIÓN DE LA APLICACIÓN

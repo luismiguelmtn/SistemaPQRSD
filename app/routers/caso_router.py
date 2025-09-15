@@ -51,9 +51,9 @@ from fastapi import APIRouter
 from typing import Optional, List
 
 # Importamos nuestros módulos personalizados
-from enums import TipoCaso, EstadoCaso
-from models import CasoCreate, CasoResponse, CasoUpdate
-from services import (
+from app.core.enums import TipoCaso, EstadoCaso
+from app.schemas.caso import CasoCreate, CasoResponse, CasoUpdate
+from app.services.caso_services import (
     crear_nuevo_caso,
     obtener_casos_filtrados,
     obtener_caso_por_id,
