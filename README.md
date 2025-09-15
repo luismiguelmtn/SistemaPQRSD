@@ -50,6 +50,41 @@ pqrsd/
 - **Docker y Docker Compose** (recomendado)
 - **Git** para clonar el repositorio
 
+### 🆕 Instalación Desde Cero (Proyecto Nuevo)
+
+**⚠️ IMPORTANTE**: Si es tu primera vez instalando este proyecto o quieres empezar completamente limpio, debes eliminar ciertos archivos antes de comenzar:
+
+#### 🗑️ Archivos y Carpetas a Eliminar (Solo para instalación desde cero)
+
+```bash
+# 1. Eliminar archivos de migración existentes (mantener solo la estructura)
+rm -rf app/migrations/versions/*
+# En Windows: rmdir /s app\migrations\versions
+# Luego crear carpeta vacía: mkdir app\migrations\versions
+
+# 2. Eliminar base de datos Docker (si existe)
+docker compose down -v
+docker volume prune -f
+
+# 3. Se vuelve a crear la base de datos
+docker compose up -d
+```
+
+**📁 Estructura que debe quedar después de limpiar:**
+```
+app/migrations/
+├── env.py              # ✅ Mantener
+├── script.py.mako      # ✅ Mantener
+├── README              # ✅ Mantener
+└── versions/           # ✅ Mantener carpeta (pero vacía)
+```
+
+**🎯 ¿Cuándo hacer esto?**
+- ✅ Primera instalación del proyecto
+- ✅ Quieres empezar con base de datos completamente limpia
+- ✅ Tienes problemas con migraciones conflictivas
+- ❌ Ya tienes el proyecto funcionando (no es necesario)
+
 ### 🐳 Instalación con Docker (Recomendado)
 
 1. **Clonar el repositorio**
@@ -90,21 +125,60 @@ pqrsd/
 
 6. **Inicializar la base de datos** 🗄️
    
-   **⚠️ IMPORTANTE**: Si es la primera vez que clonas el proyecto o tienes una base de datos vacía, DEBES ejecutar estos comandos:
+   **📋 FLUJO DE TRABAJO CON ALEMBIC (Mejores Prácticas de la Industria):**
    
-   ```bash
-   # 1. Aplicar migraciones (crear todas las tablas)
-   alembic upgrade head
-   
-   # 2. Opcional: Cargar datos de ejemplo para pruebas
-   python tests/fixtures/datos_ejemplo.py
+   ```
+   Modelos SQLAlchemy → Migración Alembic → Aplicar Migración → Tablas en BD
+        (caso.py)     →   (autogenerate)  →  (upgrade head)  →   (PostgreSQL)
    ```
    
-   **🔰 Para programadores nuevos en Alembic:**
-   - `alembic upgrade head` crea TODAS las tablas en tu base de datos vacía
-   - Es como ejecutar todos los CREATE TABLE automáticamente
-   - SIEMPRE ejecuta este comando en un proyecto nuevo
-   - Si no lo haces, tendrás errores de "tabla no existe"
+   **⚠️ IMPORTANTE**: Los pasos varían según si es instalación desde cero o proyecto existente:
+   
+   **🆕 Para instalación DESDE CERO (base de datos vacía):**
+   ```bash
+   # 1. ✅ VERIFICAR que existen migraciones
+   ls app/migrations/versions/
+   # Si está vacía, crear migración inicial:
+   
+   # 2. 🔄 GENERAR migración automáticamente desde modelos
+   alembic revision --autogenerate -m "Initial migration"
+   
+   # 3. 🚀 APLICAR la migración (crea las tablas)
+   alembic upgrade head
+   
+   # 4. ✅ VERIFICAR que las tablas se crearon
+   alembic current
+   
+   # 5. 📊 Opcional: Cargar datos de ejemplo para pruebas
+   python -m tests.fixtures.insertar_casos_ejemplo
+   ```
+   
+   **🔄 Para proyecto EXISTENTE (con migraciones ya creadas):**
+   ```bash
+   # 1. ✅ VERIFICAR estado actual
+   alembic current
+   
+   # 2. 🚀 APLICAR migraciones existentes (crear todas las tablas)
+   alembic upgrade head
+   
+   # 3. ✅ VERIFICAR que las tablas se crearon
+   alembic current
+   
+   # 4. 📊 Opcional: Cargar datos de ejemplo para pruebas
+   python -m tests.fixtures.insertar_casos_ejemplo
+   ```
+   
+   **🔰 CONCEPTOS CLAVE para programadores nuevos en Alembic:**
+   - 🏗️ **Alembic NO crea tablas directamente** - usa archivos de migración
+   - 📝 **Las migraciones se generan automáticamente** desde tus modelos SQLAlchemy
+   - 🚀 **`alembic upgrade head`** aplica todas las migraciones pendientes
+   - ✅ **SIEMPRE verifica** que las migraciones existen antes de aplicarlas
+   - 🚨 **Si no hay migraciones**, las tablas NO se crearán
+   
+   **🔍 TROUBLESHOOTING:**
+   - ❌ **"tabla no existe"** → Falta ejecutar `alembic upgrade head`
+   - ❌ **"No revision files found"** → Falta crear migración inicial
+   - ❌ **Solo tabla `alembic_version`** → No hay migraciones en `/versions/`
 
 ### 🔧 Instalación Manual (Sin Docker)
 
@@ -140,27 +214,126 @@ Una vez iniciado el servidor, accede a:
 
 ### 🛠️ Comandos Útiles
 
+#### 🔧 Comandos de Alembic (Mejores Prácticas)
+
+**📊 VERIFICACIÓN Y DIAGNÓSTICO:**
 ```bash
-# Verificar estado de migraciones
+# ✅ Ver estado actual de migraciones
 alembic current
 
-# Ver historial de migraciones
-alembic history
+# 📋 Ver historial completo de migraciones
+alembic history --verbose
 
-# Aplicar migraciones
+# 🔍 Verificar si hay migraciones pendientes
+alembic heads
+
+# 📁 Listar archivos de migración existentes
+ls app/migrations/versions/
+# Windows: dir app\migrations\versions\
+```
+
+**🔄 GENERACIÓN Y APLICACIÓN:**
+```bash
+# 📝 Crear nueva migración automáticamente (RECOMENDADO)
+alembic revision --autogenerate -m "Descripción del cambio"
+
+# 🚀 Aplicar todas las migraciones pendientes
 alembic upgrade head
 
-# Crear nueva migración
-alembic revision --autogenerate -m "descripción"
+# ✅ Verificar que se aplicó correctamente
+alembic current
+```
 
-# Revertir migración
+**🚨 COMANDOS DE EMERGENCIA:**
+```bash
+# ⚠️ Revertir a la migración anterior (CUIDADO: puede eliminar datos)
 alembic downgrade -1
 
-# Ver logs de Docker
+# 🔍 Ver SQL que se ejecutaría sin aplicarlo
+alembic upgrade head --sql
+
+# 🆘 Marcar migración como aplicada sin ejecutarla (solo emergencias)
+alembic stamp head
+```
+
+#### 🐳 Comandos de Docker
+```bash
+# Ver logs de PostgreSQL
 docker compose logs postgres
 
 # Parar PostgreSQL
 docker compose down
+
+# Eliminar volúmenes (BORRA TODOS LOS DATOS)
+docker compose down -v
+docker volume prune -f
+
+# Reiniciar PostgreSQL
+docker compose restart postgres
+```
+
+#### 🆕 Comandos para Instalación Desde Cero
+```bash
+# Limpiar migraciones existentes (Windows)
+rmdir /s app\migrations\versions
+mkdir app\migrations\versions
+
+# Limpiar migraciones existentes (Linux/Mac)
+rm -rf app/migrations/versions/*
+
+# Crear migración inicial
+alembic revision --autogenerate -m "Initial migration"
+
+# Aplicar migración inicial
+alembic upgrade head
+```
+
+#### ✅ Comandos de Verificación y Validación
+
+**🔍 ANTES de aplicar migraciones:**
+```bash
+# Verificar estado actual
+alembic current
+
+# Ver migraciones pendientes
+alembic heads
+
+# Listar archivos de migración
+ls app/migrations/versions/  # Linux/Mac
+dir app\migrations\versions\  # Windows
+
+# Ver SQL que se ejecutaría (sin aplicar)
+alembic upgrade head --sql
+```
+
+**✅ DESPUÉS de aplicar migraciones:**
+```bash
+# Confirmar que se aplicó correctamente
+alembic current
+
+# Verificar tablas creadas en PostgreSQL
+
+# Windows (usando Docker):
+docker compose exec postgres psql -U pqrsd_user -d pqrsd_sistema -c "\dt"
+
+# Linux/Mac (con psql instalado localmente):
+psql -h localhost -U pqrsd_user -d pqrsd_sistema -c "\dt"
+
+# Alternativa multiplataforma:
+python app/core/database.py
+
+# Ver historial completo
+alembic history --verbose
+```
+
+**🚨 TROUBLESHOOTING rápido:**
+```bash
+# Si solo existe tabla alembic_version
+alembic revision --autogenerate -m "Recreate missing tables"
+alembic upgrade head
+
+# Si hay errores de conexión
+docker compose ps  # Verificar que PostgreSQL esté corriendo
 ```
 
 ## 🗄️ Sistema de Migraciones con Alembic
@@ -252,8 +425,26 @@ alembic upgrade head
 
 5. **Opcional: Agregar datos de prueba**
    ```bash
-   python tests/fixtures/datos_ejemplo.py
+   python -m tests.fixtures.insertar_casos_ejemplo
    ```
+   
+   **📋 Opciones avanzadas para datos de ejemplo:**
+   ```bash
+   # Generar 100 casos (por defecto)
+   python -m tests.fixtures.insertar_casos_ejemplo
+   
+   # Generar cantidad específica de casos
+   python -m tests.fixtures.insertar_casos_ejemplo 50
+   python -m tests.fixtures.insertar_casos_ejemplo 500
+   
+   # Verificar que los datos se insertaron correctamente
+   python -c "from app.core.database import engine; from sqlalchemy import text; print('Casos en BD:', engine.execute(text('SELECT COUNT(*) FROM casos')).scalar())"
+   ```
+   
+   **⚠️ Prerrequisitos para insertar datos:**
+   - ✅ PostgreSQL debe estar ejecutándose (`docker compose ps`)
+   - ✅ Las migraciones deben estar aplicadas (`alembic current`)
+   - ✅ La tabla 'casos' debe existir en la base de datos
 
 **🎉 ¡Listo!** Ahora puedes ejecutar `python -m uvicorn main:app --reload`
 
@@ -433,6 +624,28 @@ docker compose logs postgres
 ```bash
 # Usar otro puerto
 python -m uvicorn main:app --reload --port 8001
+```
+
+**❌ Error al insertar casos de ejemplo:**
+```bash
+# Error: "relation 'casos' does not exist"
+# Solución: Aplicar migraciones primero
+alembic upgrade head
+
+# Error: "connection refused" o "database does not exist"
+# Solución: Verificar que PostgreSQL esté corriendo
+docker compose ps
+docker compose up -d
+
+# Error: "ImportError" o "ModuleNotFoundError"
+# Solución: Verificar que el entorno virtual esté activado
+venv\Scripts\activate  # Windows
+source venv/bin/activate  # Linux/Mac
+
+# Verificar que los datos se insertaron correctamente
+curl "http://localhost:8000/casos/" | jq '.[] | .numero_caso_formateado'
+# O usando Python:
+python -c "from app.services.caso import obtener_todos_los_casos; print(f'Total casos: {len(obtener_todos_los_casos())}')"
 ```
 
 ### 📞 Soporte

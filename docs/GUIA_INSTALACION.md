@@ -89,15 +89,60 @@ alembic upgrade head
 ---
 
 ### 7️⃣ **Cargar Datos de Ejemplo (Opcional)**
+
+**⚠️ Prerrequisitos antes de cargar datos:**
+1. ✅ PostgreSQL debe estar ejecutándose
+2. ✅ Las migraciones deben estar aplicadas
+3. ✅ El entorno virtual debe estar activado
+
+**Verificar prerrequisitos:**
 ```bash
-python test/datos_ejemplo.py
+# 1. Verificar que PostgreSQL esté corriendo
+docker compose ps
+# Debe mostrar el contenedor 'postgres' como 'Up'
+
+# 2. Verificar migraciones aplicadas
+alembic current
+# Debe mostrar el ID de la migración actual
+
+# 3. Verificar entorno virtual (debe mostrar la ruta del proyecto)
+echo $VIRTUAL_ENV  # Linux/Mac
+echo $env:VIRTUAL_ENV  # Windows PowerShell
 ```
+
+**Cargar datos de ejemplo:**
+```bash
+python -m tests.fixtures.insertar_casos_ejemplo
+```
+
+**Opciones de carga:**
+```bash
+# Cargar 100 casos (por defecto)
+python -m tests.fixtures.insertar_casos_ejemplo
+
+# Cargar cantidad específica
+python -m tests.fixtures.insertar_casos_ejemplo 50
+python -m tests.fixtures.insertar_casos_ejemplo 500
+```
+
 **¿Qué hace?** 
 - Inserta datos de prueba realistas
-- Crea 5 casos PQRSD de ejemplo con numeración automática (PET-2025-0001, QUE-2025-0001, etc.)
+- Crea casos PQRSD de ejemplo con numeración automática (PET-2025-0001, QUE-2025-0001, etc.)
 - Útil para testing, desarrollo y demostración
 - Incluye casos en diferentes estados (recibido, en proceso, resuelto, cerrado)
 - Demuestra el sistema de numeración inteligente por tipo y año
+
+**Verificar que los datos se cargaron correctamente:**
+```bash
+# Opción 1: Usando curl (requiere que el servidor esté corriendo)
+curl "http://localhost:8000/casos/" | jq 'length'
+
+# Opción 2: Usando Python directamente
+python -c "from app.services.caso import obtener_todos_los_casos; print(f'Total casos insertados: {len(obtener_todos_los_casos())}')"
+
+# Opción 3: Usando psql (si tienes PostgreSQL client instalado)
+psql -h localhost -U pqrsd_user -d pqrsd_db -c "SELECT COUNT(*) as total_casos FROM casos;"
+```
 
 ---
 
@@ -169,6 +214,109 @@ docker ps
 
 ---
 
+## 🐳 Docker Compose y Gestión de Volúmenes
+
+### **🔍 Diferencia Crítica: Preservar vs Eliminar Datos**
+
+#### ✅ **Comando SEGURO** (Preserva datos)
+```bash
+docker compose down
+```
+**¿Qué hace?**
+- ✅ Detiene los contenedores
+- ✅ Elimina los contenedores
+- ✅ Elimina las redes creadas
+- ✅ **PRESERVA los volúmenes** (¡tus datos están seguros!)
+
+**Resultado:** Los datos de PostgreSQL se mantienen intactos.
+
+#### ❌ **Comando PELIGROSO** (Elimina datos)
+```bash
+docker compose down -v
+```
+**¿Qué hace?**
+- ❌ Detiene los contenedores
+- ❌ Elimina los contenedores
+- ❌ Elimina las redes creadas
+- ❌ **ELIMINA los volúmenes** (¡se pierden TODOS los datos!)
+
+**Resultado:** Los datos de PostgreSQL se eliminan completamente.
+
+### **🔄 Flujo de Trabajo Seguro**
+
+#### Para reiniciar servicios manteniendo datos:
+```bash
+# 1. Detener servicios (datos seguros)
+docker compose down
+
+# 2. Volver a iniciar servicios
+docker compose up -d
+
+# ✅ Resultado: Mismos datos, contenedores frescos
+```
+
+#### Para verificar que los datos se mantuvieron:
+```bash
+# Verificar que los casos siguen ahí
+docker exec -it sistemapqrsd-postgres-1 psql -U postgres -d pqrsd_db -c "SELECT COUNT(*) FROM casos;"
+```
+
+### **📊 Comparación de Comandos**
+
+| Comando | Contenedores | Volúmenes | Datos | Uso Recomendado |
+|---------|-------------|-----------|-------|----------------|
+| `docker compose stop` | ⏸️ Detiene | ✅ Mantiene | ✅ Seguros | Pausa temporal |
+| `docker compose down` | ❌ Elimina | ✅ Mantiene | ✅ Seguros | Reinicio limpio |
+| `docker compose down -v` | ❌ Elimina | ❌ Elimina | ❌ Perdidos | Reset completo |
+
+### **🎯 Casos de Uso**
+
+#### ✅ Cuándo usar `docker compose down`:
+- Actualizar configuración en `docker-compose.yml`
+- Reiniciar servicios con problemas
+- Aplicar cambios en variables de entorno
+- Limpiar contenedores pero mantener datos
+- **Desarrollo diario normal**
+
+#### ⚠️ Cuándo usar `docker compose down -v`:
+- **Solo en desarrollo:** resetear base de datos completamente
+- Problemas de corrupción de datos
+- Cambiar esquema de base de datos desde cero
+- **NUNCA en producción sin backup**
+
+### **🛡️ Mejores Prácticas**
+
+#### Para desarrollo seguro:
+```bash
+# ✅ Comando por defecto (seguro)
+docker compose down
+docker compose up -d
+
+# ⚠️ Solo si necesitas reset completo
+docker compose down -v
+docker compose up -d
+# Luego cargar datos de ejemplo:
+python -m tests.fixtures.insertar_casos_ejemplo
+```
+
+#### Para hacer backup antes de operaciones peligrosas:
+```bash
+# Backup de la base de datos
+docker exec sistemapqrsd-postgres-1 pg_dump -U postgres pqrsd_db > backup_$(date +%Y%m%d_%H%M%S).sql
+
+# Restaurar desde backup (si es necesario)
+docker exec -i sistemapqrsd-postgres-1 psql -U postgres pqrsd_db < backup_20250101_120000.sql
+```
+
+### **⚠️ Advertencias Importantes**
+
+- **🚨 NUNCA uses `docker compose down -v` en producción** sin hacer backup primero
+- **✅ Usa `docker compose down` como comando por defecto** para desarrollo
+- **📋 Siempre verifica que los datos se mantuvieron** después de reiniciar
+- **💾 Haz backups regulares** antes de cambios importantes
+
+---
+
 ## 🚨 Solución de Problemas
 
 ### **Error: "No module named 'dotenv'"**
@@ -194,6 +342,86 @@ Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser
 ```bash
 # Usa un puerto diferente
 uvicorn main:app --host localhost --port 8001 --reload
+```
+
+### **Error: Puerto 5432 ocupado**
+```bash
+# Ver qué proceso usa el puerto
+netstat -tulpn | grep 5432
+
+# Cambiar puerto en docker-compose.yml
+ports:
+  - "5433:5432"  # Usar puerto 5433 en lugar de 5432
+```
+
+### **Error: "relation does not exist"**
+```bash
+# Ejecutar migraciones
+alembic upgrade head
+```
+
+### **Error: Permisos de Docker**
+```bash
+# Linux: Agregar usuario al grupo docker
+sudo usermod -aG docker $USER
+# Reiniciar sesión después
+```
+
+### **❌ Errores al insertar casos de ejemplo**
+
+**Error: "relation 'casos' does not exist"**
+```bash
+# Causa: Las migraciones no se han aplicado
+# Solución:
+alembic upgrade head
+
+# Verificar que la tabla existe:
+psql -h localhost -U pqrsd_user -d pqrsd_db -c "\dt casos"
+```
+
+**Error: "connection refused" o "could not connect to server"**
+```bash
+# Causa: PostgreSQL no está corriendo
+# Solución:
+docker compose up -d
+
+# Verificar estado:
+docker compose ps
+# El contenedor 'postgres' debe estar 'Up'
+```
+
+**Error: "ImportError" o "ModuleNotFoundError"**
+```bash
+# Causa: Entorno virtual no activado o dependencias faltantes
+# Solución:
+
+# Windows:
+venv\Scripts\activate
+pip install -r requirements.txt
+
+# Linux/Mac:
+source venv/bin/activate
+pip install -r requirements.txt
+```
+
+**Error: "No module named 'tests.fixtures'"**
+```bash
+# Causa: Ejecutando desde directorio incorrecto
+# Solución: Asegurarse de estar en el directorio raíz del proyecto
+cd /ruta/al/proyecto/SistemaPQRSD
+python -m tests.fixtures.insertar_casos_ejemplo
+```
+
+**Verificar que los datos se insertaron correctamente:**
+```bash
+# Método 1: Contar registros en la base de datos
+psql -h localhost -U pqrsd_user -d pqrsd_db -c "SELECT COUNT(*) FROM casos;"
+
+# Método 2: Usar la API (requiere servidor corriendo)
+curl "http://localhost:8000/casos/" | jq 'length'
+
+# Método 3: Script Python directo
+python -c "from app.services.caso import obtener_todos_los_casos; print(f'Casos insertados: {len(obtener_todos_los_casos())}')"
 ```
 
 ---
