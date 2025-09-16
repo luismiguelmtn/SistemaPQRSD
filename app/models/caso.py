@@ -126,6 +126,15 @@ class Caso(Base):
         comment="Año del caso para optimizar consultas"
     )
     
+    # Número de caso completo formateado para búsquedas rápidas
+    numero_caso_completo = Column(
+        String(20),        # "PET-2025-0004" = 13 chars + margen
+        nullable=True,     # Inicialmente nullable para migración
+        unique=True,       # Garantiza unicidad global
+        index=True,        # Índice único para búsquedas O(1)
+        comment="Número de caso formateado para búsquedas rápidas (ej: PET-2025-0004)"
+    )
+    
     # Tipo de caso (petición, queja, reclamo, sugerencia, denuncia)
     # Usamos SQLEnum para restringir a valores específicos
     tipo = Column(
@@ -294,7 +303,7 @@ class Caso(Base):
             'id': self.id,
             'numero_caso': self.numero_caso,
             'anio': self.anio,
-            'numero_caso_formateado': formatear_numero_caso(self.tipo, self.numero_caso, self.anio) if self.tipo and self.numero_caso and self.anio else None,
+            'numero_caso_completo': self.numero_caso_completo,
             'tipo': self.tipo.value if self.tipo else None,
             'asunto': self.asunto,
             'descripcion': self.descripcion,
@@ -308,7 +317,7 @@ class Caso(Base):
         }
     
     @classmethod
-    def from_pydantic(cls, caso_data, numero_caso: int, anio: int) -> 'Caso':
+    def from_pydantic(cls, caso_data, numero_caso: int, anio: int, numero_caso_completo: str = None) -> 'Caso':
         """
         Factory method para crear instancia de Caso desde objeto Pydantic.
         
@@ -325,6 +334,7 @@ class Caso(Base):
             caso_data: Objeto CasoCreate de Pydantic con datos validados
             numero_caso: Número consecutivo del caso (entero)
             anio: Año del caso (entero)
+            numero_caso_completo: Número de caso formateado (ej: PET-2025-0004)
             
         Returns:
             Caso: Nueva instancia lista para persistir en PostgreSQL
@@ -332,7 +342,7 @@ class Caso(Base):
         Example:
             >>> from pydantic_models import CasoCreate
             >>> pydantic_caso = CasoCreate(tipo='PETICION', asunto='...', ...)
-            >>> db_caso = Caso.from_pydantic(pydantic_caso, 1, 2024)
+            >>> db_caso = Caso.from_pydantic(pydantic_caso, 1, 2024, 'PET-2024-0001')
             >>> session.add(db_caso)
         
         Note:
@@ -342,6 +352,7 @@ class Caso(Base):
         return cls(
             numero_caso=numero_caso,
             anio=anio,
+            numero_caso_completo=numero_caso_completo,
             tipo=caso_data.tipo,
             asunto=caso_data.asunto,
             descripcion=caso_data.descripcion,

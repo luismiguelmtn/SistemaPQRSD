@@ -153,7 +153,7 @@ return CasoResponse.model_validate(nuevo_caso.to_dict())
     "id": 1,
     "numero_caso": 1,
     "anio": 2025,
-    "numero_caso_formateado": "QUE-2025-0001",
+    "numero_caso_completo": "QUE-2025-0001",
     "tipo": "queja",
     "asunto": "Problema con el servicio",
     "descripcion": "El servicio de seguridad no llegó a tiempo según lo acordado",

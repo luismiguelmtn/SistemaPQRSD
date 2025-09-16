@@ -492,7 +492,7 @@ curl -X POST "http://localhost:8000/casos/" \
   "id": 1,
   "numero_caso": 1,
   "anio": 2025,
-  "numero_caso_formateado": "PET-2025-0001",
+  "numero_caso_completo": "PET-2025-0001",
   "tipo": "peticion",
   "estado": "recibido",
   "asunto": "Solicitud de información",
@@ -643,7 +643,7 @@ venv\Scripts\activate  # Windows
 source venv/bin/activate  # Linux/Mac
 
 # Verificar que los datos se insertaron correctamente
-curl "http://localhost:8000/casos/" | jq '.[] | .numero_caso_formateado'
+curl "http://localhost:8000/casos/" | jq '.[] | .numero_caso_completo'
 # O usando Python:
 python -c "from app.services.caso import obtener_todos_los_casos; print(f'Total casos: {len(obtener_todos_los_casos())}')"
 ```

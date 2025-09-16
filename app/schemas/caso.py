@@ -194,16 +194,16 @@ class CasoResponse(BaseModel):
         example="Los requisitos para la licencia son: 1) Cédula, 2) RUT, 3) Certificado de bomberos..."
     )
     
-    numero_caso_formateado: str = Field(
-        description="Número de caso formateado para mostrar al usuario",
+    numero_caso_completo: str = Field(
+        description="Número de caso completo con prefijo, año y número consecutivo",
         example="PET-2024-0001"
     )
     
     @classmethod
     def from_dict(cls, data: dict):
         """Crea una instancia de CasoResponse desde un diccionario."""
-        # Generar numero_caso_formateado si no está presente
-        if 'numero_caso_formateado' not in data and 'tipo' in data and 'numero_caso' in data and 'anio' in data:
+        # Generar numero_caso_completo si no está presente
+        if 'numero_caso_completo' not in data and 'tipo' in data and 'numero_caso' in data and 'anio' in data:
             prefijo_map = {
                 "peticion": "PET",
                 "queja": "QUE", 
@@ -212,7 +212,7 @@ class CasoResponse(BaseModel):
                 "denuncia": "DEN"
             }
             prefijo = prefijo_map.get(data['tipo'], "CASO")
-            data['numero_caso_formateado'] = f"{prefijo}-{data['anio']}-{data['numero_caso']:04d}"
+            data['numero_caso_completo'] = f"{prefijo}-{data['anio']}-{data['numero_caso']:04d}"
         
         return cls(**data)
 

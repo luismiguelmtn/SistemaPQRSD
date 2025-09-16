@@ -172,8 +172,11 @@ def crear_nuevo_caso(caso_data: CasoCreate, max_intentos: int = 5) -> Dict[str, 
                     # En reintentos, usar la función que garantiza unicidad
                     numero_caso, anio = generar_numero_caso(caso_data.tipo)
                 
+                # Generar el número de caso completo formateado
+                numero_caso_completo = formatear_numero_caso(caso_data.tipo, numero_caso, anio)
+                
                 # Crear el objeto Caso usando el método from_pydantic
-                nuevo_caso_db = Caso.from_pydantic(caso_data, numero_caso, anio)
+                nuevo_caso_db = Caso.from_pydantic(caso_data, numero_caso, anio, numero_caso_completo)
                 
                 # Agregar a la sesión y guardar en la base de datos
                 db.add(nuevo_caso_db)
@@ -344,12 +347,12 @@ def obtener_caso_por_id(caso_id: str) -> Dict[str, Any]:
         )
 
 
-def parsear_numero_caso(numero_caso_formateado: str) -> tuple[TipoCaso, int, int]:
+def parsear_numero_caso(numero_caso_completo: str) -> tuple[TipoCaso, int, int]:
     """
-    Parsea un número de caso formateado para extraer tipo, año y número consecutivo.
+    Parsea un número de caso completo para extraer tipo, año y número consecutivo.
     
     Args:
-        numero_caso_formateado (str): Número formateado (ej: "PET-2024-0001")
+        numero_caso_completo (str): Número completo (ej: "PET-2024-0001")
         
     Returns:
         tuple[TipoCaso, int, int]: Tupla con (tipo, anio, numero_consecutivo)
@@ -358,7 +361,7 @@ def parsear_numero_caso(numero_caso_formateado: str) -> tuple[TipoCaso, int, int
         HTTPException: Si el formato es inválido
     """
     try:
-        partes = numero_caso_formateado.split('-')
+        partes = numero_caso_completo.split('-')
         if len(partes) != 3:
             raise ValueError("Formato inválido")
         
@@ -385,56 +388,11 @@ def parsear_numero_caso(numero_caso_formateado: str) -> tuple[TipoCaso, int, int
     except (ValueError, IndexError) as e:
         raise HTTPException(
             status_code=400,
-            detail=f"Formato de número de caso inválido: {numero_caso_formateado}. Formato esperado: XXX-YYYY-NNNN"
+            detail=f"Formato de número de caso inválido: {numero_caso_completo}. Formato esperado: XXX-YYYY-NNNN"
         )
 
 
-def obtener_caso_por_numero(numero_caso_formateado: str) -> Dict[str, Any]:
-    """
-    Busca un caso específico por su número legible en la base de datos.
-    
-    El número de caso es el identificador que se muestra a los usuarios
-    (ej: "PET-2024-0001", "QUE-2024-0005"). Es más fácil de recordar y comunicar que el UUID.
-    
-    Args:
-        numero_caso_formateado (str): Número de caso a buscar (ej: "PET-2024-0001")
-        
-    Returns:
-        Dict[str, Any]: El caso encontrado
-        
-    Raises:
-        HTTPException: Si el caso no existe (404) o hay error en la consulta
-        
-    Ejemplo:
-        >>> try:
-        ...     caso = obtener_caso_por_numero("PET-2024-0001")
-        ...     print(f"Estado: {caso['estado']}")
-        ... except HTTPException:
-        ...     print("Número de caso inválido")
-    """
-    try:
-        # Parsear el número de caso formateado
-        tipo, anio, numero_consecutivo = parsear_numero_caso(numero_caso_formateado)
-        
-        # Obtener una sesión de base de datos
-        with next(get_database_session()) as db:
-            # Buscar el caso por tipo, año y número consecutivo
-            caso = db.query(Caso).filter(
-                Caso.tipo == tipo,
-                Caso.anio == anio,
-                Caso.numero_caso == numero_consecutivo
-            ).first()
-            
-            # Si no se encuentra, lanzar excepción HTTP 404
-            if not caso:
-                raise HTTPException(status_code=404, detail="Caso no encontrado")
-            
-            # Convertir a modelo de respuesta
-            from app.schemas.caso import CasoResponse
-            return CasoResponse.from_dict(caso.to_dict())
-            
-    except HTTPException:
-        # Re-lanzar excepciones HTTP (como 404)
+
         raise
     except Exception as e:
         # Si hay cualquier otro error, lanzar una excepción HTTP 500
@@ -598,6 +556,119 @@ def obtener_estadisticas_sistema() -> Dict[str, Any]:
         raise HTTPException(
             status_code=500,
             detail=f"Error al generar estadísticas: {str(e)}"
+        )
+
+
+# ============================================================================
+# FUNCIONES DE BÚSQUEDA OPTIMIZADAS
+# ============================================================================
+
+def buscar_caso_por_numero_completo(numero_caso_completo: str) -> Dict[str, Any]:
+    """
+    Busca un caso por su número completo formateado (ej: PET-2025-0004).
+    
+    Esta función utiliza el índice único en numero_caso_completo para
+    búsquedas O(1) extremadamente rápidas, mucho más eficientes que
+    parsear y filtrar por tipo, año y número por separado.
+    
+    Args:
+        numero_caso_completo (str): Número de caso formateado (ej: "PET-2025-0004")
+        
+    Returns:
+        Dict[str, Any]: Datos del caso encontrado
+        
+    Raises:
+        HTTPException: Si el caso no existe (404) o hay error en la consulta (500)
+        
+    Ejemplo:
+        >>> caso = buscar_caso_por_numero_completo("PET-2025-0004")
+        >>> print(caso["asunto"])  # "Solicitud de información"
+        
+    Nota:
+        Esta función usa búsqueda directa por índice único para máximo rendimiento.
+    """
+    try:
+        # Validar formato básico
+        if not numero_caso_completo or len(numero_caso_completo.strip()) == 0:
+            raise HTTPException(
+                status_code=400,
+                detail="El número de caso no puede estar vacío"
+            )
+        
+        # Normalizar el número (eliminar espacios y convertir a mayúsculas)
+        numero_normalizado = numero_caso_completo.strip().upper()
+        
+        # Obtener una sesión de base de datos
+        with next(get_database_session()) as db:
+            # Búsqueda directa por índice único - O(1)
+            caso_encontrado = db.query(Caso).filter(
+                Caso.numero_caso_completo == numero_normalizado
+            ).first()
+            
+            if not caso_encontrado:
+                raise HTTPException(
+                    status_code=404,
+                    detail=f"No se encontró ningún caso con el número: {numero_caso_completo}"
+                )
+            
+            # Convertir a diccionario y retornar
+            return caso_encontrado.to_dict()
+            
+    except HTTPException:
+        # Re-lanzar excepciones HTTP sin modificar
+        raise
+    except Exception as e:
+        # Capturar cualquier otro error y convertir a HTTPException
+        raise HTTPException(
+            status_code=500,
+            detail=f"Error al buscar el caso: {str(e)}"
+        )
+
+
+def buscar_casos_por_patron_numero(patron: str, limite: int = 50) -> List[Dict[str, Any]]:
+    """
+    Busca casos que coincidan con un patrón en el número completo.
+    
+    Útil para búsquedas parciales como "PET-2025" para encontrar
+    todas las peticiones del 2025, o "QUE" para todas las quejas.
+    
+    Args:
+        patron (str): Patrón a buscar (ej: "PET-2025", "QUE", "2024")
+        limite (int): Máximo número de resultados (default: 50)
+        
+    Returns:
+        List[Dict[str, Any]]: Lista de casos que coinciden con el patrón
+        
+    Ejemplo:
+        >>> casos = buscar_casos_por_patron_numero("PET-2025")
+        >>> len(casos)  # Número de peticiones en 2025
+    """
+    try:
+        if not patron or len(patron.strip()) == 0:
+            raise HTTPException(
+                status_code=400,
+                detail="El patrón de búsqueda no puede estar vacío"
+            )
+        
+        patron_normalizado = patron.strip().upper()
+        
+        with next(get_database_session()) as db:
+            # Búsqueda con LIKE usando el índice
+            casos_encontrados = db.query(Caso).filter(
+                Caso.numero_caso_completo.like(f"%{patron_normalizado}%")
+            ).order_by(
+                Caso.fecha_creacion.desc()  # Más recientes primero
+            ).limit(limite).all()
+            
+            # Convertir a lista de diccionarios
+            return [caso.to_dict() for caso in casos_encontrados]
+            
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Error al buscar casos por patrón: {str(e)}"
         )
 
 

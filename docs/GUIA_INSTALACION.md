@@ -171,7 +171,7 @@ uvicorn main:app --host localhost --port 8000 --reload
 - **Estadísticas:** http://localhost:8000/estadisticas/
 - **Casos:** http://localhost:8000/casos/
 - **Crear Caso:** http://localhost:8000/casos/ (POST)
-- **Buscar por Número:** http://localhost:8000/casos/numero/{numero_formateado}
+- **Buscar por Número:** http://localhost:8000/casos/buscar/{numero_caso_completo}
 
 ---
 
