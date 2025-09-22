@@ -25,7 +25,6 @@ Versión: 2.0
 """
 
 import sys
-import os
 from datetime import datetime, timedelta
 from typing import List, Dict, Any, Tuple
 import random
@@ -275,17 +274,17 @@ def construir_descripcion_caso(tipo: TipoCaso, asunto: str) -> str:
 # FUNCIONES PRINCIPALES DE GENERACIÓN
 # ============================================================================
 
-def generar_caso_individual(numero_caso: int) -> Dict[str, Any]:
+def generar_caso_individual(tipo: TipoCaso, numero_caso: int) -> Dict[str, Any]:
     """Genera un caso individual con datos aleatorios realistas.
     
     Args:
-        numero_caso (int): Número secuencial del caso
+        tipo (TipoCaso): Tipo específico del caso
+        numero_caso (int): Número secuencial del caso para este tipo
     
     Returns:
         Dict[str, Any]: Diccionario con los datos del caso generado
     """
-    # Generar tipo y asunto
-    tipo = generar_tipo_caso_aleatorio()
+    # Generar asunto específico para el tipo
     asunto = random.choice(ASUNTOS_POR_TIPO[tipo])
     
     # Generar datos del solicitante
@@ -295,10 +294,24 @@ def generar_caso_individual(numero_caso: int) -> Dict[str, Any]:
     estado = generar_estado_caso_realista()
     fecha_creacion, fecha_actualizacion = generar_fechas_caso()
     
+    # Generar número de caso completo formateado
+    # Mapeo de tipos de caso a prefijos legibles (igual que en el servicio)
+    prefijos = {
+        TipoCaso.PETICION: "PET",
+        TipoCaso.QUEJA: "QUE", 
+        TipoCaso.RECLAMO: "REC",
+        TipoCaso.SUGERENCIA: "SUG",
+        TipoCaso.DENUNCIA: "DEN"
+    }
+    
+    prefijo = prefijos[tipo]
+    numero_caso_completo = f"{prefijo}-{ANIO_ACTUAL}-{numero_caso:04d}"
+    
     # Construir caso base
     caso = {
         "numero_caso": numero_caso,
         "anio": ANIO_ACTUAL,
+        "numero_caso_completo": numero_caso_completo,
         "tipo": tipo,
         "asunto": asunto,
         "descripcion": construir_descripcion_caso(tipo, asunto),
@@ -319,6 +332,7 @@ def generar_caso_individual(numero_caso: int) -> Dict[str, Any]:
 
 def generar_casos_ejemplo(cantidad: int = DEFAULT_CASOS_COUNT) -> List[Dict[str, Any]]:
     """Genera una lista de casos de ejemplo con datos falsos realistas.
+    Cada tipo de caso tendrá su propia numeración comenzando desde 1.
     
     Args:
         cantidad (int): Número de casos a generar. Por defecto 100.
@@ -333,9 +347,21 @@ def generar_casos_ejemplo(cantidad: int = DEFAULT_CASOS_COUNT) -> List[Dict[str,
         raise ValueError("La cantidad de casos debe ser mayor que 0")
     
     casos = []
-    for i in range(1, cantidad + 1):
-        caso = generar_caso_individual(i)
+    tipos_disponibles = list(TipoCaso)
+    
+    # Contadores para cada tipo de caso (numeración independiente)
+    contadores_por_tipo = {tipo: 1 for tipo in tipos_disponibles}
+    
+    for i in range(cantidad):
+        # Seleccionar tipo de caso aleatoriamente
+        tipo = generar_tipo_caso_aleatorio()
+        
+        # Generar caso con numeración específica para este tipo
+        caso = generar_caso_individual(tipo, contadores_por_tipo[tipo])
         casos.append(caso)
+        
+        # Incrementar contador para este tipo
+        contadores_por_tipo[tipo] += 1
     
     return casos
 
@@ -409,6 +435,7 @@ def insertar_casos_en_bd(casos: List[Dict[str, Any]]) -> bool:
                 caso = Caso(
                     numero_caso=caso_data['numero_caso'],
                     anio=caso_data['anio'],
+                    numero_caso_completo=caso_data['numero_caso_completo'],
                     tipo=caso_data['tipo'],
                     asunto=caso_data['asunto'],
                     descripcion=caso_data['descripcion'],
