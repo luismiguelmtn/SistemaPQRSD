@@ -54,7 +54,8 @@ optimizado para funcionar con PostgreSQL como base de datos empresarial.
 # ============================================================================
 
 from fastapi import FastAPI
-from app.routers.caso import router  # Importamos todas las rutas definidas en routes.py
+from app.routers.caso import router as casos_router  # Router para endpoints de casos
+from app.routers.general import router as general_router  # Router para endpoints generales
 
 # ============================================================================
 # CONFIGURACIÓN DE LA APLICACIÓN
@@ -82,10 +83,15 @@ app = FastAPI(
 # CONFIGURACIÓN DE RUTAS
 # ============================================================================
 
-# Incluir las rutas definidas en routes.py
+# Incluir los routers organizados por funcionalidad
 # include_router() toma todas las rutas del router y las agrega a la aplicación principal
 # Esto nos permite organizar las rutas en archivos separados para mejor mantenimiento
-app.include_router(router)
+
+# Router general (endpoints de información y estadísticas)
+app.include_router(general_router)
+
+# Router de casos (endpoints específicos para gestión de casos PQRSD)
+app.include_router(casos_router)
 
 # ============================================================================
 # CONFIGURACIONES ADICIONALES (OPCIONAL)

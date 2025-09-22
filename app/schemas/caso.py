@@ -115,11 +115,18 @@ class CasoResponse(BaseModel):
     cuando se consulta. Incluye TODOS los campos, tanto los que
     proporciona el usuario como los que genera el sistema.
     
+    ORDEN DE CAMPOS: Sigue el mismo orden que el modelo SQLAlchemy
+    para mantener consistencia en toda la aplicación.
+    
     Se usa para:
     - Respuestas de la API cuando se consulta un caso
     - Listados de casos
     - Mostrar detalles completos
     """
+    
+    # ========================================================================
+    # CAMPOS PRINCIPALES (mismo orden que SQLAlchemy)
+    # ========================================================================
     
     # ID único del caso (generado automáticamente por el sistema)
     id: int = Field(
@@ -139,21 +146,39 @@ class CasoResponse(BaseModel):
         example=2024
     )
     
-    # Campos que vienen del usuario (igual que CasoCreate)
+    # Estado actual del caso (generado/actualizado por el sistema)
+    estado: EstadoCaso = Field(
+        description="Estado actual del caso",
+        example="recibido"
+    )
+    
+    # Número de caso completo formateado
+    numero_caso_completo: str = Field(
+        description="Número de caso completo con prefijo, año y número consecutivo",
+        example="PET-2024-0001"
+    )
+    
+    # Tipo de caso PQRSD
     tipo: TipoCaso = Field(
         description="Tipo de caso PQRSD",
         example="peticion"
     )
     
+    # Asunto o título del caso
     asunto: str = Field(
         description="Título o asunto del caso",
         example="Solicitud de información sobre requisitos de licencia"
     )
     
+    # Descripción detallada del caso
     descripcion: str = Field(
         description="Descripción detallada del caso",
         example="Necesito conocer los requisitos y documentos necesarios..."
     )
+    
+    # ========================================================================
+    # INFORMACIÓN DEL SOLICITANTE
+    # ========================================================================
     
     nombre_solicitante: str = Field(
         description="Nombre completo del solicitante",
@@ -170,11 +195,16 @@ class CasoResponse(BaseModel):
         example="3001234567"
     )
     
-    # Estado actual del caso (generado/actualizado por el sistema)
-    estado: EstadoCaso = Field(
-        description="Estado actual del caso",
-        example="recibido"
+    # Respuesta oficial al caso (opcional, se llena cuando se resuelve)
+    respuesta: Optional[str] = Field(
+        None,
+        description="Respuesta oficial al caso (opcional)",
+        example="Los requisitos para la licencia son: 1) Cédula, 2) RUT, 3) Certificado de bomberos..."
     )
+    
+    # ========================================================================
+    # CAMPOS DE AUDITORÍA (TIMESTAMPS)
+    # ========================================================================
     
     # Fechas de control (generadas automáticamente por el sistema)
     fecha_creacion: datetime = Field(
@@ -185,18 +215,6 @@ class CasoResponse(BaseModel):
     fecha_actualizacion: datetime = Field(
         description="Fecha y hora de la última actualización",
         example="2024-01-15T10:30:00"
-    )
-    
-    # Respuesta oficial al caso (opcional, se llena cuando se resuelve)
-    respuesta: Optional[str] = Field(
-        None,
-        description="Respuesta oficial al caso (opcional)",
-        example="Los requisitos para la licencia son: 1) Cédula, 2) RUT, 3) Certificado de bomberos..."
-    )
-    
-    numero_caso_completo: str = Field(
-        description="Número de caso completo con prefijo, año y número consecutivo",
-        example="PET-2024-0001"
     )
     
     @classmethod
@@ -213,6 +231,23 @@ class CasoResponse(BaseModel):
             }
             prefijo = prefijo_map.get(data['tipo'], "CASO")
             data['numero_caso_completo'] = f"{prefijo}-{data['anio']}-{data['numero_caso']:04d}"
+        
+        # Manejar fechas que vienen como strings ISO desde la base de datos
+        from datetime import datetime
+        
+        if 'fecha_creacion' in data:
+            if isinstance(data['fecha_creacion'], str):
+                data['fecha_creacion'] = datetime.fromisoformat(data['fecha_creacion'])
+            elif data['fecha_creacion'] is None:
+                # Si por alguna razón es None, usar fecha actual como fallback
+                data['fecha_creacion'] = datetime.now()
+        
+        if 'fecha_actualizacion' in data:
+            if isinstance(data['fecha_actualizacion'], str):
+                data['fecha_actualizacion'] = datetime.fromisoformat(data['fecha_actualizacion'])
+            elif data['fecha_actualizacion'] is None:
+                # Si por alguna razón es None, usar fecha actual como fallback
+                data['fecha_actualizacion'] = datetime.now()
         
         return cls(**data)
 

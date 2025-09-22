@@ -126,7 +126,16 @@ class Caso(Base):
         comment="Año del caso para optimizar consultas"
     )
     
-    # Número de caso completo formateado para búsquedas rápidas
+    # Estado del caso (POSICIÓN 4 - SEGÚN REQUERIMIENTO)
+    estado = Column(
+        SQLEnum(EstadoCaso),
+        nullable=False,
+        default=EstadoCaso.RECIBIDO,  # Valor por defecto
+        index=True,                   # Índice para filtrar por estado
+        comment="Estado actual del caso"
+    )
+    
+    # Número de caso completo formateado (POSICIÓN 5 - SEGÚN REQUERIMIENTO)
     numero_caso_completo = Column(
         String(20),        # "PET-2025-0004" = 13 chars + margen
         nullable=True,     # Inicialmente nullable para migración
@@ -178,15 +187,6 @@ class Caso(Base):
         String(15),
         nullable=True,      # Es opcional (puede ser NULL)
         comment="Teléfono de contacto del solicitante"
-    )
-    
-    # Estado del caso
-    estado = Column(
-        SQLEnum(EstadoCaso),
-        nullable=False,
-        default=EstadoCaso.RECIBIDO,  # Valor por defecto
-        index=True,                   # Índice para filtrar por estado
-        comment="Estado actual del caso"
     )
     
     # Respuesta oficial (opcional)

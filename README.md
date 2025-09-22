@@ -17,29 +17,45 @@ Sistema robusto y escalable para gestionar casos PQRSD con:
 ## 🏗️ Estructura del Proyecto
 
 ```
-pqrsd/
-├── main.py              # Configuración principal de FastAPI
-├── routes.py            # Endpoints de la API REST
-├── services.py          # Lógica de negocio y servicios
-├── models.py            # Modelos Pydantic para validación
-├── db_models.py         # Modelos SQLAlchemy para PostgreSQL
+SistemaPQRSD/
+├── main.py                    # Configuración principal de FastAPI
+├── docker-compose.yml         # Configuración de Docker para PostgreSQL
+├── alembic.ini               # Configuración de Alembic (migraciones)
+├── requirements.txt          # Dependencias del proyecto
+├── .env                      # Variables de entorno (NO incluir en git)
 ├── app/
+│   ├── __init__.py
 │   ├── core/
-│   │   └── database.py  # Configuración de conexión PostgreSQL
-│   └── migrations/      # Migraciones de base de datos con Alembic
-├── enums.py             # Enumeraciones (TipoCaso, EstadoCaso)
-├── alembic.ini          # Configuración de Alembic (migraciones)
-
-├── docker-compose.yml   # Configuración de Docker para PostgreSQL
-├── .env                 # Variables de entorno (NO incluir en git)
-├── .env.docker          # Variables para Docker
-├── requirements.txt     # Dependencias del proyecto
-├── GUIAS/              # Documentación técnica completa
+│   │   ├── __init__.py
+│   │   ├── database.py       # Configuración de conexión PostgreSQL
+│   │   └── enums.py          # Enumeraciones (TipoCaso, EstadoCaso)
+│   ├── models/
+│   │   ├── __init__.py
+│   │   └── caso.py           # Modelos SQLAlchemy para PostgreSQL
+│   ├── schemas/
+│   │   ├── __init__.py
+│   │   └── caso.py           # Modelos Pydantic para validación
+│   ├── routers/
+│   │   ├── __init__.py
+│   │   └── caso.py           # Endpoints de la API REST
+│   ├── services/
+│   │   ├── __init__.py
+│   │   └── caso.py           # Lógica de negocio y servicios
+│   └── migrations/           # Migraciones de base de datos con Alembic
+│       ├── env.py
+│       ├── script.py.mako
+│       └── versions/
+├── docs/                     # Documentación técnica completa
 │   ├── GUIA_INSTALACION.md
 │   ├── GUIA_BASE_DE_DATOS.md
 │   ├── GUIA_ENDPOINTS.md
+│   ├── GUIA_ALEMBIC.md
 │   └── EJEMPLO_FLUJO_DATOS.md
-└── README.md           # Este archivo
+├── tests/                    # Pruebas y fixtures
+│   ├── __init__.py
+│   └── fixtures/
+│       └── insertar_casos_ejemplo.py
+└── README.md                 # Este archivo
 ```
 
 ## 🚀 Instalación y Configuración

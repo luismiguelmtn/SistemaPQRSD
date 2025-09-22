@@ -58,7 +58,6 @@ from app.services.caso import (
     obtener_casos_filtrados,
     obtener_caso_por_id,
     actualizar_caso_existente,
-    obtener_estadisticas_sistema,
     buscar_caso_por_numero_completo,
     buscar_casos_por_patron_numero
 )
@@ -69,41 +68,19 @@ from app.services.caso import (
 
 # Crear el router principal
 # Un APIRouter es como un mini-aplicación que agrupa rutas relacionadas
-router = APIRouter()
+router = APIRouter(
+    prefix="/casos",
+    tags=["Casos PQRSD"],
+    responses={404: {"description": "No encontrado"}}
+)
 
 
 # ============================================================================
 # ENDPOINTS DE LA API
 # ============================================================================
 
-@router.get("/")
-def root():
-    """
-    Endpoint raíz - Página de bienvenida de la API
-    
-    ¿Qué hace este endpoint?
-    - Proporciona información básica sobre la API
-    - Es útil para verificar que el servidor está funcionando
-    - Indica dónde encontrar la documentación automática
-    
-    Método HTTP: GET
-    URL: http://localhost:8000/
-    
-    Respuesta:
-    {
-        "mensaje": "Bienvenido al Sistema PQRSD",
-        "version": "1.0.0", 
-        "documentacion": "/docs"
-    }
-    """
-    return {
-        "mensaje": "Bienvenido al Sistema PQRSD", 
-        "version": "1.0.0",
-        "documentacion": "/docs"
-    }
 
-
-@router.post("/casos/", response_model=CasoResponse)
+@router.post("/", response_model=CasoResponse)
 def crear_caso(caso: CasoCreate):
     """
     Crear un nuevo caso PQRSD
@@ -137,7 +114,7 @@ def crear_caso(caso: CasoCreate):
     return crear_nuevo_caso(caso)
 
 
-@router.get("/casos/", response_model=List[CasoResponse])
+@router.get("/listar", response_model=List[CasoResponse])
 def listar_casos(tipo: Optional[TipoCaso] = None, estado: Optional[EstadoCaso] = None):
     """
     Listar casos con filtros opcionales
@@ -149,7 +126,7 @@ def listar_casos(tipo: Optional[TipoCaso] = None, estado: Optional[EstadoCaso] =
     - Si no se especifican filtros, devuelve todos los casos
     
     Método HTTP: GET (usado para obtener/leer datos)
-    URL: http://localhost:8000/casos/
+    URL: http://localhost:8000/casos/listar
     
     Parámetros de consulta (query parameters):
     - tipo (opcional): Filtra por tipo de caso
@@ -164,15 +141,15 @@ def listar_casos(tipo: Optional[TipoCaso] = None, estado: Optional[EstadoCaso] =
     Indica que la respuesta será una lista (array) de objetos CasoResponse.
     
     Ejemplos de uso:
-    - GET /casos/ (todos los casos)
-    - GET /casos/?tipo=peticion (solo peticiones)
-    - GET /casos/?estado=pendiente (solo casos pendientes)
-    - GET /casos/?tipo=queja&estado=resuelto (quejas resueltas)
+    - GET /casos/listar (todos los casos)
+    - GET /casos/listar?tipo=peticion (solo peticiones)
+    - GET /casos/listar?estado=pendiente (solo casos pendientes)
+    - GET /casos/listar?tipo=queja&estado=resuelto (quejas resueltas)
     """
     return obtener_casos_filtrados(tipo, estado)
 
 
-@router.get("/casos/{caso_id}", response_model=CasoResponse)
+@router.get("/{caso_id}", response_model=CasoResponse)
 def obtener_caso(caso_id: str):
     """
     Obtener un caso específico por ID
@@ -204,7 +181,7 @@ def obtener_caso(caso_id: str):
 
 
 
-@router.put("/casos/{caso_id}", response_model=CasoResponse)
+@router.put("/{caso_id}", response_model=CasoResponse)
 def actualizar_caso(caso_id: str, actualizacion: CasoUpdate):
     """
     Actualizar el estado o respuesta de un caso
@@ -245,51 +222,11 @@ def actualizar_caso(caso_id: str, actualizacion: CasoUpdate):
     return actualizar_caso_existente(caso_id, actualizacion)
 
 
-@router.get("/estadisticas/")
-def obtener_estadisticas():
-    """
-    Obtener estadísticas básicas del sistema
-    
-    ¿Qué hace este endpoint?
-    - Proporciona un resumen estadístico del sistema PQRSD
-    - Muestra conteos por tipo de caso y estado
-    - Útil para dashboards y reportes administrativos
-    
-    Método HTTP: GET
-    URL: http://localhost:8000/estadisticas/
-    
-    No requiere parámetros.
-    
-    Respuesta típica:
-    {
-        "total_casos": 150,
-        "por_tipo": {
-            "peticion": 45,
-            "queja": 30,
-            "reclamo": 25,
-            "sugerencia": 50
-        },
-        "por_estado": {
-            "pendiente": 20,
-            "en_proceso": 35,
-            "resuelto": 80,
-            "cerrado": 15
-        }
-    }
-    
-    Nota para principiantes:
-    Este endpoint es muy útil para crear dashboards administrativos
-    que muestren el estado general del sistema y ayuden en la toma
-    de decisiones sobre la gestión de casos.
-    """
-    return obtener_estadisticas_sistema()
-
-
 # ============================================================================
 # ENDPOINTS DE BÚSQUEDA OPTIMIZADA
 # ============================================================================
 
-@router.get("/casos/buscar/{numero_caso_completo}", response_model=CasoResponse)
+@router.get("/buscar/{numero_caso_completo}", response_model=CasoResponse)
 def buscar_caso_optimizado(numero_caso_completo: str):
     """
     Búsqueda optimizada por número completo (ej: PET-2025-0004)
@@ -322,7 +259,7 @@ def buscar_caso_optimizado(numero_caso_completo: str):
     return buscar_caso_por_numero_completo(numero_caso_completo)
 
 
-@router.get("/casos/buscar/patron/{patron}", response_model=List[CasoResponse])
+@router.get("/buscar/patron/{patron}", response_model=List[CasoResponse])
 def buscar_casos_por_patron(patron: str, limite: Optional[int] = 50):
     """
     Búsqueda por patrón en número completo
