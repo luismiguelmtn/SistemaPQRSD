@@ -452,18 +452,18 @@ def insertar_casos_en_bd(casos: List[Dict[str, Any]]) -> bool:
             
             # Confirmar cambios
             db.commit()
-            print(f"✅ {casos_insertados} casos insertados exitosamente en la base de datos")
+            print(f"[OK] {casos_insertados} casos insertados exitosamente en la base de datos")
             return True
             
         except Exception as e:
             db.rollback()
-            print(f"❌ Error al insertar casos: {e}")
+            print(f"[ERROR] Error al insertar casos: {e}")
             return False
         finally:
             db.close()
             
     except ImportError as e:
-        print(f"❌ Error al importar dependencias de base de datos: {e}")
+        print(f"[ERROR] Error al importar dependencias de base de datos: {e}")
         return False
 
 
@@ -523,7 +523,7 @@ def main() -> None:
     # Generar casos
     print(f"Generando {cantidad_casos} casos de ejemplo...")
     casos = generar_casos_ejemplo(cantidad_casos)
-    print(f"✅ Generados {len(casos)} casos de ejemplo")
+    print(f"[OK] Generados {len(casos)} casos de ejemplo")
     
     # Insertar en base de datos
     print("\nInsertando casos en la base de datos...")
@@ -534,7 +534,7 @@ def main() -> None:
         estadisticas = calcular_estadisticas_casos(casos)
         mostrar_estadisticas(estadisticas)
     else:
-        print("\n⚠️  Los casos se generaron pero no se pudieron insertar en la base de datos")
+        print("\n[ADVERTENCIA] Los casos se generaron pero no se pudieron insertar en la base de datos")
         print("   Verifica que la base de datos esté corriendo y las migraciones aplicadas")
 
 
